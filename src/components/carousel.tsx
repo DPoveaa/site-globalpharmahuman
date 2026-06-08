@@ -107,14 +107,14 @@ export function Carousel({ initialSlides }: { initialSlides?: Slide[] }) {
           style={{ transform: `translateX(-${current * 100}%)` }}
         >
           {slides.map((slide, index) => (
-            <div key={slide.id} className="relative min-w-full aspect-[24/9] md:aspect-[24/9] bg-brand-50 overflow-hidden">
+            <div key={slide.id} className="relative min-w-full aspect-[16/9] bg-brand-50 overflow-hidden">
               <Link href={slide.link || "/catalogo"} className="block w-full h-full relative" draggable={false}>
                 <Image
                   src={getImageUrl(slide.image)}
                   alt={slide.title || "Banner"}
                   fill
                   draggable={false}
-                  className="object-contain md:object-cover transition-opacity duration-500"
+                  className="object-cover transition-opacity duration-500"
                   priority={index === 0}
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';

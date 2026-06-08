@@ -39,7 +39,7 @@ export default async function HomePage() {
 
   const fetchOptions = { cache: "no-store" as RequestCache };
 
-  const [categoriesRes, featuredRes, latestRes, favoritesRes, bannersRes, featuredConfigRes, latestConfigRes] = await Promise.all([
+  const [categoriesRes, featuredRes, latestRes, favoritesRes, bannersRes, featuredConfigRes, latestConfigRes, socialFeedRes] = await Promise.all([
     fetch(`${apiUrl}/catalog/categories-with-products`, fetchOptions),
     fetch(`${apiUrl}/catalog/products/featured`, fetchOptions),
     fetch(`${apiUrl}/catalog/products/latest`, fetchOptions),
@@ -48,7 +48,8 @@ export default async function HomePage() {
       : Promise.resolve(null),
     fetch(`${apiUrl}/catalog/settings/HOME_BANNERS`, fetchOptions),
     fetch(`${apiUrl}/catalog/settings/HOME_FEATURED_CONFIG`, fetchOptions),
-    fetch(`${apiUrl}/catalog/settings/HOME_LATEST_CONFIG`, fetchOptions)
+    fetch(`${apiUrl}/catalog/settings/HOME_LATEST_CONFIG`, fetchOptions),
+    fetch(`${apiUrl}/catalog/settings/SHOW_SOCIAL_FEED`, fetchOptions)
   ]);
 
   async function safeJson(res: Response | null, defaultValue: any = []) {
@@ -65,6 +66,8 @@ export default async function HomePage() {
   const bannersJson = await safeJson(bannersRes, null);
   const featuredConfigJson = await safeJson(featuredConfigRes, null);
   const latestConfigJson = await safeJson(latestConfigRes, null);
+  const socialFeedJson = await safeJson(socialFeedRes, null);
+  const showSocialFeed = !socialFeedJson || socialFeedJson.value !== "false";
 
   let customBanners = undefined;
   if (bannersJson?.value) {
@@ -138,7 +141,7 @@ export default async function HomePage() {
   ].sort((a, b) => a.order - b.order);
 
   return (
-    <div className="space-y-8 pb-16 pt-8 animate-fade-in">
+    <div className="space-y-8 pb-16 animate-fade-in">
       {/* Hero Carousel */}
       <Carousel initialSlides={customBanners} />
 
@@ -254,7 +257,7 @@ export default async function HomePage() {
       <PharmacyUnits />
 
       {/* Mural de Redes Sociais */}
-      <SocialFeed />
+      {showSocialFeed && <SocialFeed />}
     </div>
   );
 }

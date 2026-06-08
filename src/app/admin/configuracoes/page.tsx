@@ -12,6 +12,7 @@ type Setting = {
 export default function AdminSettingsPage() {
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [cepOrigem, setCepOrigem] = useState("");
+  const [showSocialFeed, setShowSocialFeed] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -66,12 +67,16 @@ export default function AdminSettingsPage() {
           const settings = settingsJson as Setting[];
           const whatsapp = settings.find((s) => s.key === "whatsapp_number");
           const cep = settings.find((s) => s.key === "CEP_ORIGEM");
+          const socialFeed = settings.find((s) => s.key === "SHOW_SOCIAL_FEED");
           
           if (whatsapp?.value) {
             setWhatsappNumber(formatDisplayPhone(whatsapp.value));
           }
           if (cep?.value) {
             setCepOrigem(cep.value);
+          }
+          if (socialFeed) {
+            setShowSocialFeed(socialFeed.value !== "false");
           }
         }
       }
@@ -98,6 +103,11 @@ export default function AdminSettingsPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ key: "CEP_ORIGEM", value: cepOrigem.replace(/\D/g, "") })
+        }),
+        fetch("/api/admin/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: "SHOW_SOCIAL_FEED", value: String(showSocialFeed) })
         })
       ]);
 
@@ -163,6 +173,25 @@ export default function AdminSettingsPage() {
             <p className="text-xs text-slate-500">
               Este CEP será usado como ponto de partida para o cálculo de frete da ConectEnvios.
             </p>
+          </div>
+        </div>
+
+        <div className="h-px bg-slate-100" />
+
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">Página Inicial (Home)</h2>
+          
+          <div className="flex items-center gap-3">
+            <input
+              id="showSocialFeed"
+              type="checkbox"
+              className="h-5 w-5 rounded border-brand-200 text-brand-600 focus:ring-brand-500 cursor-pointer"
+              checked={showSocialFeed}
+              onChange={(e) => setShowSocialFeed(e.target.checked)}
+            />
+            <label htmlFor="showSocialFeed" className="text-sm font-semibold text-slate-700 cursor-pointer">
+              Exibir bloco "Nossa Comunidade Ativa" (Redes Sociais)
+            </label>
           </div>
         </div>
 
