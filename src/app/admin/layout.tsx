@@ -16,7 +16,6 @@ import {
 import ForcePasswordChange from "./ForcePasswordChange";
 
 import { AdminSidebar } from "@/components/admin-sidebar";
-import { AdminNotifications } from "@/components/admin-notifications";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -43,9 +42,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Painel de Controle</p>
           <h2 className="text-2xl font-black text-slate-900">Administração</h2>
-        </div>
-        <div>
-          <AdminNotifications />
         </div>
       </div>
 

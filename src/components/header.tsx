@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useCart } from "@/contexts/cart-context";
+import { AdminNotifications } from "@/components/admin-notifications";
 
 const AVAILABLE_ICONS: Record<string, any> = {
   Zap, Flame, Heart, Leaf, Baby, Apple, Stethoscope, Package,
@@ -67,6 +68,10 @@ export function Header({
   initialColors?: { navBarColor: string; navTextColor: string; navIconColor: string };
 }) {
   const { data: session } = useSession();
+  const showQuadro = !!(session?.user && (
+    (session.user as any).role === "ADMIN" ||
+    ((session.user as any).role === "EMPLOYEE" && (session.user as any).permissions?.includes("quadro_de_avisos"))
+  ));
   const { cartCount } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
@@ -197,6 +202,9 @@ export function Header({
             <Link href="/conta" className="p-2 transition hover:text-slate-500" title="Minha Conta">
               <User size={22} strokeWidth={1.5} />
             </Link>
+            {showQuadro && (
+              <AdminNotifications />
+            )}
             {(session?.user?.role === "ADMIN" || session?.user?.role === "EMPLOYEE") && (
               <Link href="/admin" className="hidden rounded-lg bg-brand-100 px-3 py-1 text-xs font-bold text-slate-600 transition hover:bg-brand-600 hover:text-white sm:block">
                 PAINEL

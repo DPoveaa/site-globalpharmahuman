@@ -49,7 +49,13 @@ export function AdminNotifications() {
     // Poll every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
 
-    return () => clearInterval(interval);
+    // Refresh immediately when order status updates
+    window.addEventListener("order-status-updated", fetchNotifications);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("order-status-updated", fetchNotifications);
+    };
   }, []);
 
   // Close dropdown on click outside
@@ -68,7 +74,7 @@ export function AdminNotifications() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-brand-100 bg-white text-slate-600 transition hover:bg-brand-50 hover:text-slate-900 active:scale-95 shadow-sm"
-        title="Alertas de Pedidos"
+        title="Quadro de Avisos"
       >
         <Bell size={20} />
         {count > 0 && (
@@ -81,7 +87,7 @@ export function AdminNotifications() {
       {isOpen && (
         <div className="absolute right-0 mt-3 w-80 md:w-96 rounded-[24px] border border-brand-100 bg-white p-4 shadow-xl shadow-slate-900/10">
           <div className="mb-3 flex items-center justify-between border-b border-brand-50 pb-2">
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Ações Pendentes</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Quadro de Avisos</h3>
             <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-black text-brand-700">
               {count} pendentes
             </span>
@@ -90,7 +96,7 @@ export function AdminNotifications() {
           <div className="max-h-72 overflow-y-auto space-y-2 min-h-0">
             {notifications.length === 0 ? (
               <div className="py-6 text-center text-xs text-slate-400">
-                Nenhuma ação pendente no momento. Bom trabalho!
+                Nenhum aviso no momento. Bom trabalho!
               </div>
             ) : (
               notifications.map((notif) => (
