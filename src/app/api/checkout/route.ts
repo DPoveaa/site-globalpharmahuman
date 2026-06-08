@@ -15,13 +15,15 @@ export async function POST(req: Request) {
   try {
     const res = await fetch(`${apiUrl}/checkout`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.accessToken}`
+      },
       body: JSON.stringify({ ...body, userId: session.user.id })
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ message: "Erro no servidor backend." }, { status: 500 });
   }
 }
-

@@ -1,6 +1,14 @@
-import { compare } from "bcryptjs";
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+
+type AuthUser = {
+  role?: "ADMIN" | "EMPLOYEE" | "CUSTOMER";
+  accessToken?: string;
+  phone?: string | null;
+  cpf?: string | null;
+  permissions?: string[];
+  mustChangePassword?: boolean;
+};
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -20,7 +28,7 @@ export const authOptions: NextAuthOptions = {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
         
         try {
-          // O login deve ser validado pelo BACKEND agora
+          console.log(`[Auth Authorize] Attempting login for: ${credentials.email}`);
           const res = await fetch(`${apiUrl}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -32,11 +40,13 @@ export const authOptions: NextAuthOptions = {
 
           if (res.ok) {
             const data = await res.json();
-            // O backend retorna { token, user: { id, name, email, role } }
+            console.log(`[Auth Authorize] Login successful for: ${credentials.email}, role: ${data.user.role}`);
             return {
               ...data.user,
               accessToken: data.token
             };
+          } else {
+            console.error(`[Auth Authorize] Login failed for: ${credentials.email}, status: ${res.status}`);
           }
         } catch (error) {
           console.error("Erro na autenticação via API:", error);
@@ -49,17 +59,29 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as any).role ?? "CUSTOMER";
-        token.accessToken = (user as any).accessToken;
+        const authUser = user as AuthUser;
+        token.role = authUser.role ?? "CUSTOMER";
+        token.accessToken = authUser.accessToken;
+        token.phone = authUser.phone;
+        token.cpf = authUser.cpf;
+        token.permissions = authUser.permissions;
+        token.mustChangePassword = authUser.mustChangePassword;
+        console.log(`[Auth JWT Callback] User role: ${token.role}`);
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub ?? "";
-        session.user.role = (token.role as any) ?? "CUSTOMER";
-        (session as any).accessToken = token.accessToken;
+        session.user.role = token.role ?? "CUSTOMER";
+        session.user.phone = token.phone;
+        session.user.cpf = token.cpf;
+        session.user.permissions = token.permissions;
+        session.user.mustChangePassword = token.mustChangePassword;
       }
+      // Garante que o accessToken seja passado do token para a sessão
+      session.accessToken = token.accessToken;
+      console.log(`[Auth Session Callback] Session role: ${session.user?.role}`);
       return session;
     }
   }

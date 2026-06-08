@@ -13,8 +13,7 @@ export async function POST(req: Request) {
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ message: "Erro no servidor backend." }, { status: 500 });
   }
 }
-

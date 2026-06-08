@@ -38,7 +38,6 @@ router.get("/", requireAuth, async (req, res) => {
         id: item.product.id,
         name: item.product.name,
         imageUrl: item.product.imageUrl,
-        stock: item.product.stock,
         price: productPrice,
         finalPrice
       }
@@ -66,9 +65,6 @@ router.post("/items", requireAuth, async (req, res) => {
   });
 
   const quantity = (current?.quantity ?? 0) + parsed.data.quantity;
-  if (quantity > product.stock) {
-    return res.status(400).json({ message: "Quantidade maior que o estoque." });
-  }
 
   await prisma.cartItem.upsert({
     where: {
@@ -93,8 +89,8 @@ router.patch("/items", requireAuth, async (req, res) => {
   if (!parsed.success) return res.status(400).json({ message: "Dados inválidos." });
 
   const product = await prisma.product.findUnique({ where: { id: parsed.data.productId } });
-  if (!product || parsed.data.quantity > product.stock) {
-    return res.status(400).json({ message: "Quantidade inválida." });
+  if (!product || !product.active) {
+    return res.status(400).json({ message: "Produto indisponível." });
   }
 
   await prisma.cartItem.update({

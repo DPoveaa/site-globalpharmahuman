@@ -1,6 +1,7 @@
-import { Role } from "@prisma/client";
 import "next-auth";
 import "next-auth/jwt";
+
+type UserRole = "ADMIN" | "EMPLOYEE" | "CUSTOMER";
 
 declare module "next-auth" {
   interface Session {
@@ -8,14 +9,23 @@ declare module "next-auth" {
       id: string;
       name?: string | null;
       email?: string | null;
-      role: Role;
+      role: UserRole;
+      phone?: string | null;
+      cpf?: string | null;
+      permissions?: string[];
+      mustChangePassword?: boolean;
     };
+    accessToken?: string;
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    role?: Role;
+    role?: UserRole;
+    accessToken?: string;
+    phone?: string | null;
+    cpf?: string | null;
+    permissions?: string[];
+    mustChangePassword?: boolean;
   }
 }
-

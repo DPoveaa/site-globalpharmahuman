@@ -50,6 +50,18 @@ export function whatsappLink(message: string, number?: string) {
   return getWhatsappLink(number ?? fallback, message);
 }
 
+export function getImageUrl(path: string | null) {
+  if (!path) return "/gph_logo.png";
+  if (path.startsWith("http")) return path;
+  if (path.startsWith("/uploads")) {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+    // Remove /api from end of URL if present to get base backend URL
+    const baseUrl = apiUrl.replace(/\/api$/, "");
+    return `${baseUrl}${path}`;
+  }
+  return path;
+}
+
 export function slugify(value: string) {
   return value
     .normalize("NFD")
@@ -57,4 +69,17 @@ export function slugify(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "");
+}
+
+export function translateOrderStatus(status: string) {
+  const map: Record<string, string> = {
+    PENDING: "Pendente",
+    PROCESSING: "Processando",
+    PAID: "Pago",
+    SHIPPED: "Enviado",
+    DELIVERED: "Entregue",
+    CANCELED: "Cancelado",
+    REFUNDED: "Reembolsado"
+  };
+  return map[status.toUpperCase()] || status;
 }

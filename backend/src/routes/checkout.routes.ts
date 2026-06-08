@@ -43,8 +43,8 @@ router.post("/", requireAuth, async (req, res) => {
   const order = await prisma.$transaction(async (tx) => {
     for (const item of items) {
       const product = await tx.product.findUnique({ where: { id: item.productId } });
-      if (!product || product.stock < item.quantity) {
-        throw new Error(`Estoque insuficiente para ${item.product.name}`);
+      if (!product || !product.active) {
+        throw new Error(`Produto indisponível: ${item.product.name}`);
       }
     }
 
@@ -66,12 +66,7 @@ router.post("/", requireAuth, async (req, res) => {
       }
     });
 
-    for (const item of items) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.quantity } }
-      });
-    }
+
 
     await tx.cartItem.deleteMany({ where: { userId: req.auth!.userId } });
     return created;

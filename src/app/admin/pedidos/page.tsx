@@ -1,11 +1,19 @@
-import { formatCurrency } from "@/lib/utils";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { ClipboardList } from "lucide-react";
+import { OrderList } from "@/components/admin/order-list";
 
 export default async function AdminPedidosPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+  const session = await getServerSession(authOptions);
+  const token = session?.accessToken;
   
   let orders = [];
   try {
-    const res = await fetch(`${apiUrl}/admin/orders`, { cache: "no-store" });
+    const res = await fetch(`${apiUrl}/admin/orders`, {
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined
+    });
     if (res.ok) {
       orders = await res.json();
     }
@@ -14,26 +22,15 @@ export default async function AdminPedidosPage() {
   }
 
   return (
-    <div>
-      <h1 className="mb-5 text-3xl font-bold text-brand-900">Pedidos</h1>
-      <div className="space-y-3">
-        {orders.map((order) => (
-          <article key={order.id} className="rounded-2xl border border-brand-100 bg-white p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-semibold text-brand-900">Pedido #{order.id.slice(-8).toUpperCase()}</p>
-              <p className="text-sm font-semibold text-brand-700">{order.status}</p>
-            </div>
-            <p className="text-sm text-brand-700">
-              Cliente: {order.user.name} ({order.user.email})
-            </p>
-            <p className="text-sm text-brand-700">Itens: {order.items.length}</p>
-            <p className="text-sm font-semibold text-brand-900">
-              Total: {formatCurrency(Number(order.total))}
-            </p>
-          </article>
-        ))}
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="rounded-xl bg-brand-100 p-2 text-slate-600">
+          <ClipboardList size={24} />
+        </div>
+        <h1 className="text-3xl font-bold text-slate-900">Gerenciamento de Pedidos</h1>
       </div>
+
+      <OrderList initialOrders={orders} />
     </div>
   );
 }
-

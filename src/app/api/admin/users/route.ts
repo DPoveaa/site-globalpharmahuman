@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -9,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ message: "Acesso negado." }, { status: 403 });
   }
 
-  const token = (session as any).accessToken;
+  const token = session.accessToken;
 
   try {
     const res = await fetch(`${apiUrl}/admin/users`, {
@@ -17,8 +18,8 @@ export async function GET() {
       cache: "no-store"
     });
     const data = await res.json();
-    return NextResponse.json(data);
-  } catch (error) {
+    return NextResponse.json(data, { status: res.status });
+  } catch {
     return NextResponse.json({ message: "Erro ao buscar usuários no backend." }, { status: 500 });
   }
 }
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Acesso negado." }, { status: 403 });
   }
 
-  const token = (session as any).accessToken;
+  const token = session.accessToken;
   const body = await req.json();
 
   try {
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ message: "Erro ao processar requisição no backend." }, { status: 500 });
   }
 }

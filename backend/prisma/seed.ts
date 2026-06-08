@@ -59,7 +59,6 @@ async function main() {
       description: "Reforço da imunidade e ação antioxidante.",
       details: "60 cápsulas",
       price: 79.9,
-      stock: 120,
       sku: "VIT-C-1000",
       categoryId: vitaminCategory.id,
       promotionId: promo.id,
@@ -77,7 +76,6 @@ async function main() {
       description: "Composto manipulado para suporte ao descanso e relaxamento.",
       details: "30 doses",
       price: 119.9,
-      stock: 60,
       sku: "MAN-SONO-MAG",
       categoryId: manipulatedCategory.id,
       imageUrl:
