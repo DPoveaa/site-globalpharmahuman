@@ -1,6 +1,7 @@
 import { MapPin, Phone, MapPinned, ChevronRight, Store } from "lucide-react";
 import Link from "next/link";
 import { UnitStatus } from "./unit-status";
+import { getImageUrl } from "@/lib/utils";
 
 type Unit = {
   id: string;
@@ -64,7 +65,7 @@ export async function PharmacyUnits() {
                   >
                     {unit.imageUrl ? (
                       <img
-                        src={process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") + unit.imageUrl}
+                        src={getImageUrl(unit.imageUrl)}
                         alt={`Fachada ${unit.name}`}
                         className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
                       />

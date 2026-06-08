@@ -52,14 +52,15 @@ export function whatsappLink(message: string, number?: string) {
 
 export function getImageUrl(path: string | null) {
   if (!path) return "/gph_logo.png";
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("/uploads")) {
+  const cleanPath = path.replace(/\\$/, ""); // Remove trailing backslashes
+  if (cleanPath.startsWith("http")) return cleanPath;
+  if (cleanPath.startsWith("/uploads")) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
-    // Remove /api from end of URL if present to get base backend URL
-    const baseUrl = apiUrl.replace(/\/api$/, "");
-    return `${baseUrl}${path}`;
+    // Remove /api or /backend-api from end of URL if present to get base backend URL
+    const baseUrl = apiUrl.replace(/\/api$/, "").replace(/\/backend-api$/, "");
+    return `${baseUrl}${cleanPath}`;
   }
-  return path;
+  return cleanPath;
 }
 
 export function slugify(value: string) {

@@ -6,6 +6,7 @@ import {
   MapPin, Plus, Trash2, Edit2, Save, X,
   Phone, Map, Image as ImageIcon, Power, PowerOff
 } from "lucide-react";
+import { getImageUrl } from "@/lib/utils";
 
 type Unit = {
   id: string;
@@ -185,7 +186,7 @@ export default function AdminUnitsPage() {
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 bg-slate-100 rounded-2xl overflow-hidden flex-shrink-0 relative border border-slate-200">
                     {unit.imageUrl ? (
-                      <img src={process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") + unit.imageUrl} alt={unit.name} className="w-full h-full object-cover" />
+                      <img src={getImageUrl(unit.imageUrl)} alt={unit.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-300">
                         <ImageIcon size={24} />
@@ -274,7 +275,7 @@ export default function AdminUnitsPage() {
                 <div className="flex flex-col items-center gap-4 border-b border-slate-100 pb-6">
                   <div className="h-28 w-28 sm:h-32 sm:w-32 bg-slate-100 rounded-3xl overflow-hidden relative border-2 border-dashed border-slate-200 group shrink-0">
                     {editingUnit.imageUrl ? (
-                      <img src={process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") + editingUnit.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <img src={getImageUrl(editingUnit.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50">
                         <ImageIcon size={32} className="mb-2 opacity-50" />
