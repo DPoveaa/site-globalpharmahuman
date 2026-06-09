@@ -40,6 +40,8 @@ export function Carousel({ initialSlides }: { initialSlides?: Slide[] }) {
   const [current, setCurrent] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [dragged, setDragged] = useState(false);
+  const [startX, setStartX] = useState(0);
 
   const minSwipeDistance = 50;
 
@@ -58,57 +60,74 @@ export function Carousel({ initialSlides }: { initialSlides?: Slide[] }) {
 
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     setTouchEnd(null);
-    if ('touches' in e) {
-      setTouchStart(e.targetTouches[0].clientX);
-    } else {
-      setTouchStart((e as React.MouseEvent).clientX);
-    }
+    setDragged(false);
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    setTouchStart(clientX);
+    setStartX(clientX);
   };
 
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!touchStart) return;
-    if ('touches' in e) {
-      setTouchEnd(e.targetTouches[0].clientX);
-    } else {
-      setTouchEnd((e as React.MouseEvent).clientX);
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    
+    if (touchStart) {
+      setTouchEnd(clientX);
+      if (Math.abs(clientX - startX) > 10) {
+        setDragged(true);
+      }
     }
   };
 
   const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
+    if (touchStart && touchEnd) {
+      const distance = touchStart - touchEnd;
+      const isLeftSwipe = distance > minSwipeDistance;
+      const isRightSwipe = distance < -minSwipeDistance;
 
-    if (isLeftSwipe) {
-      next();
-    } else if (isRightSwipe) {
-      prev();
+      if (isLeftSwipe) {
+        next();
+      } else if (isRightSwipe) {
+        prev();
+      }
     }
 
     setTouchStart(null);
     setTouchEnd(null);
   };
 
+  const handleLinkClick = (e: React.MouseEvent) => {
+    if (dragged) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
   return (
-    <div className="mx-auto max-w-7xl px-4 md:px-8 mb-8">
+    <div className="w-full mb-8">
       <div
-        className="group relative w-full overflow-hidden rounded-2xl md:rounded-[32px] bg-brand-50 shadow-sm cursor-grab active:cursor-grabbing"
+        className="group relative w-full overflow-hidden bg-brand-50 shadow-sm cursor-grab active:cursor-grabbing touch-pan-y select-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={() => {
+          setTouchStart(null);
+          setTouchEnd(null);
+        }}
         onMouseDown={handleTouchStart}
         onMouseMove={handleTouchMove}
         onMouseUp={handleTouchEnd}
-        onMouseLeave={() => setTouchStart(null)}
+        onMouseLeave={() => {
+          setTouchStart(null);
+          setTouchEnd(null);
+        }}
+        onDragStart={(e) => e.preventDefault()}
       >
         <div
           className="flex transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${current * 100}%)` }}
         >
           {slides.map((slide, index) => (
-            <div key={slide.id} className="relative min-w-full aspect-[16/9] bg-brand-50 overflow-hidden">
-              <Link href={slide.link || "/catalogo"} className="block w-full h-full relative" draggable={false}>
+            <div key={slide.id} className="relative min-w-full aspect-[16/9] max-h-[600px] md:max-h-[720px] bg-brand-50 overflow-hidden">
+              <Link href={slide.link || "/catalogo"} onClick={handleLinkClick} className="block w-full h-full relative" draggable={false}>
                 <Image
                   src={getImageUrl(slide.image)}
                   alt={slide.title || "Banner"}

@@ -567,6 +567,24 @@ export default function CarrinhoPage() {
     calcShipping();
   }, [selectedAddressId, addresses]);
 
+  const hasQualifyingProduct = cart?.items?.some(item => {
+    if (qualifyingProductIds.length === 0) return true;
+    if (loyaltyRuleMode === "INCLUSION") {
+      return qualifyingProductIds.includes(item.product.id);
+    } else {
+      return !qualifyingProductIds.includes(item.product.id);
+    }
+  }) || false;
+
+  // Auto-clear coupon if no qualifying products are in the cart anymore
+  useEffect(() => {
+    if (!loading && cart && !hasQualifyingProduct && appliedCoupon) {
+      setAppliedCoupon(null);
+      setCouponCodeInput("");
+      toast.error("O cupom foi removido pois não há produtos válidos no carrinho.");
+    }
+  }, [hasQualifyingProduct, appliedCoupon, loading, cart]);
+
   if (loading) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center">
@@ -1118,11 +1136,11 @@ export default function CarrinhoPage() {
             <h2 className="text-xl font-black text-slate-900">Resumo</h2>
 
             {/* Campo Cupom de Fidelidade */}
-            {session && (
+            {session && hasQualifyingProduct && (
               <div className="border-b border-brand-50 pb-4 space-y-3">
                 <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <Tags size={12} className="text-amber-500" />
-                  Cupom de Fidelidade (50% OFF)
+                  Cupom (50% OFF)
                 </label>
 
                 {appliedCoupon ? (
@@ -1132,7 +1150,7 @@ export default function CarrinhoPage() {
                         {appliedCoupon.code}
                       </p>
                       <p className="text-[9px] font-bold text-emerald-600 uppercase mt-0.5">
-                        Fidelidade Ativada
+                        Cupom Ativo
                       </p>
                     </div>
                     <button
@@ -1167,7 +1185,7 @@ export default function CarrinhoPage() {
                     {/* Atalhos rápidos para os cupons do usuário */}
                     {userCoupons.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Seus vales de 50% disponíveis:</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Seus cupons de 50% OFF disponíveis:</p>
                         <div className="flex flex-wrap gap-1.5">
                           {userCoupons.map((c: any) => (
                             <button
@@ -1243,7 +1261,7 @@ export default function CarrinhoPage() {
                   <div className="flex justify-between items-center text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-100/50">
                     <span className="flex items-center gap-1.5">
                       <Tags size={14} className="text-amber-500" />
-                      Desconto Fidelidade (50%)
+                      Desconto Cupom (50%)
                     </span>
                     <span className="font-extrabold">-{formatCurrency(loyaltyDiscount)}</span>
                   </div>
