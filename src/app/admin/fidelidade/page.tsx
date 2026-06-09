@@ -107,6 +107,98 @@ export default function AdminLoyaltyPage() {
     }
   }
 
+  const handleExportSKUs = () => {
+    try {
+      const skus = qualifyingProductIds
+        .map((id) => {
+          const prod = products.find((p) => p.id === id);
+          return prod?.sku;
+        })
+        .filter(Boolean);
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(skus, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `fidelidade_skus_${ruleMode.toLowerCase()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      toast.success("Lista de SKUs exportada com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao exportar SKUs.");
+    }
+  };
+
+  const handleImportSKUs = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        let skus: string[] = [];
+
+        try {
+          skus = JSON.parse(text);
+        } catch {
+          skus = text
+            .split(/[\n,;]/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+
+        if (!Array.isArray(skus)) {
+          toast.error("Formato inválido. O arquivo deve ser um JSON array ou texto com SKUs separados por vírgula/linha.");
+          return;
+        }
+
+        const matchedIds: string[] = [];
+        const missingSkus: string[] = [];
+
+        skus.forEach((sku) => {
+          const cleanSku = sku.trim();
+          if (!cleanSku) return;
+          const prod = products.find((p) => p.sku.toLowerCase() === cleanSku.toLowerCase());
+          if (prod) {
+            matchedIds.push(prod.id);
+          } else {
+            missingSkus.push(cleanSku);
+          }
+        });
+
+        if (matchedIds.length === 0) {
+          toast.error("Nenhum SKU do arquivo corresponde aos produtos cadastrados no sistema.");
+          return;
+        }
+
+        const res = await fetch("/api/admin/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key: "LOYALTY_QUALIFYING_PRODUCTS",
+            value: JSON.stringify(matchedIds)
+          })
+        });
+
+        if (res.ok) {
+          setQualifyingProductIds(matchedIds);
+          if (missingSkus.length > 0) {
+            toast.success(`Importação parcial: ${matchedIds.length} produtos carregados. ${missingSkus.length} SKUs não encontrados: ${missingSkus.slice(0, 5).join(", ")}${missingSkus.length > 5 ? "..." : ""}`, { duration: 6000 });
+          } else {
+            toast.success(`Importação concluída! ${matchedIds.length} produtos adicionados.`);
+          }
+        } else {
+          toast.error("Erro ao salvar as configurações no servidor.");
+        }
+      } catch (error) {
+        toast.error("Erro ao processar o arquivo.");
+      }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  };
+
   async function fetchCoupons() {
     setLoading(true);
     try {
@@ -273,21 +365,40 @@ export default function AdminLoyaltyPage() {
 
           {/* Gerenciador de Produtos e Lista */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">
                 {ruleMode === "INCLUSION" ? "Produtos Elegíveis" : "Produtos Excluídos"} ({qualifyingProductIds.length})
               </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setTempProductIds([...qualifyingProductIds]);
-                  setIsProductModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm"
-              >
-                <Plus size={14} className="text-amber-500" />
-                Gerenciar Lista
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportSKUs}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300 transition shadow-sm cursor-pointer font-sans"
+                  title="Exportar lista de SKUs em formato JSON"
+                >
+                  Exportar
+                </button>
+                <label className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300 transition shadow-sm cursor-pointer font-sans">
+                  Importar
+                  <input
+                    type="file"
+                    accept=".json,.txt"
+                    onChange={handleImportSKUs}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempProductIds([...qualifyingProductIds]);
+                    setIsProductModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm cursor-pointer"
+                >
+                  <Plus size={14} className="text-amber-500" />
+                  Gerenciar Lista
+                </button>
+              </div>
             </div>
 
             <div className="max-h-64 overflow-y-auto rounded-3xl border border-slate-100 bg-slate-50/50 p-4 space-y-2 min-h-[140px] custom-scrollbar">
