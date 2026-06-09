@@ -345,90 +345,20 @@ export function LoyaltyInfo() {
                       <p className="text-sm text-slate-400 font-black uppercase tracking-wider">Você ainda não possui vales ativos</p>
                       <p className="text-xs text-slate-400 mt-1">Acumule 5 selos para ganhar seu primeiro vale de desconto!</p>
                     </div>
-                  ) : activeCoupons.length === 1 ? (
-                    /* Renderiza 1 cupom inline */
-                    activeCoupons.map((coupon) => (
-                      <div
-                        key={coupon.id}
-                        className="group relative overflow-hidden rounded-[32px] border transition-all duration-300 hover:shadow-xl flex flex-col md:flex-row bg-white border-amber-200 shadow-md"
-                      >
-                        {/* Vale Body / Left Side */}
-                        <div className="flex-1 p-6 flex flex-col justify-between space-y-4">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
-                                Vale de Desconto
-                              </span>
-                              <span className="text-xs font-bold text-slate-400">
-                                Gerado em {new Date(coupon.createdAt).toLocaleDateString("pt-BR")}
-                              </span>
-                            </div>
-                            <h4 className="text-2xl font-black text-slate-900 mt-3">Vale 50% OFF</h4>
-                            <p className="text-sm font-medium text-slate-500 mt-1 leading-normal">
-                              Válido para a sua 6ª fórmula manipulada. Apresente o QR Code ao atendente no balcão para resgatar.
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2.5">
-                            <code className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-black tracking-wider border border-slate-200/50">
-                              {coupon.code}
-                            </code>
-                            <button
-                              onClick={() => copyToClipboard(coupon.code)}
-                              className="p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition border border-slate-200/30 cursor-pointer"
-                              title="Copiar código do vale"
-                            >
-                              <Copy size={14} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Divider Dash-line */}
-                        <div className="relative flex md:flex-col items-center justify-center py-2 md:py-0 shrink-0">
-                          <div className="hidden md:block w-px border-l-2 border-dashed border-slate-200 h-full py-4" />
-                          <div className="md:hidden w-full border-t-2 border-dashed border-slate-200 px-4" />
-                          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-50 border border-slate-200/30 hidden md:block" />
-                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-6 h-6 rounded-full bg-slate-50 border border-slate-200/30 hidden md:block" />
-                        </div>
-
-                        {/* QR Code / Right Side */}
-                        <div className="p-6 bg-slate-50/55 md:bg-white flex flex-col items-center justify-center shrink-0 border-t md:border-t-0 md:border-l border-slate-100 min-w-[180px]">
-                          <div className="flex flex-col items-center space-y-2 animate-scale-in">
-                            <div className="relative p-2 bg-white rounded-2xl border border-amber-100 shadow-sm">
-                              <img
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`${origin}/validar-cupom?code=${coupon.code}`)}`}
-                                alt={`QR Code ${coupon.code}`}
-                                className="h-28 w-28 object-contain"
-                              />
-                            </div>
-                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                              Apresente o QR Code
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
                   ) : (
-                    /* Exibe card resumo que abre o Modal de carrossel se tiver mais de 1 cupom */
-                    <div className="relative overflow-hidden rounded-[32px] border-2 border-amber-300 bg-slate-900 p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                      <div className="space-y-2">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">Multi-Cupons Ativos</span>
-                        <h4 className="text-2xl font-black">Você possui {activeCoupons.length} Vales de 50% ativos!</h4>
-                        <p className="text-xs text-slate-300 font-medium">
-                          Seus vales podem ser resgatados online ou presencialmente. Clique abaixo para visualizar e escanear de forma fácil.
-                        </p>
-                      </div>
+                    /* Apenas um botão limpo e responsivo para visualizar os vales ativos */
+                    <div className="rounded-3xl border border-slate-100 bg-white p-6 transition hover:shadow-lg flex flex-col justify-center items-center">
                       <button
                         type="button"
                         onClick={() => {
                           setCurrentCouponIndex(0);
                           setIsVouchersModalOpen(true);
                         }}
-                        className="rounded-2xl bg-amber-400 hover:bg-amber-500 text-slate-950 px-6 py-3.5 text-xs font-black uppercase tracking-widest transition active:scale-95 shadow-lg shadow-amber-400/20 shrink-0 text-center cursor-pointer font-sans"
+                        className="w-full rounded-2xl bg-amber-400 hover:bg-amber-500 text-slate-950 py-4 px-6 text-sm font-black uppercase tracking-widest transition active:scale-95 shadow-lg shadow-amber-400/20 text-center cursor-pointer font-sans flex items-center justify-center gap-2"
                       >
-                        Visualizar Meus Vales
+                        <Ticket size={18} />
+                        Visualizar Meus Vales ({activeCoupons.length})
                       </button>
-                      <div className="absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
                     </div>
                   )}
 

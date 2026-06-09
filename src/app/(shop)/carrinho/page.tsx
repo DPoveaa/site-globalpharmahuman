@@ -196,13 +196,13 @@ export default function CarrinhoPage() {
         });
 
         if (qualifyingItems.length === 0) {
-          toast.error("Este cupom de 50% de desconto só pode ser utilizado em fórmulas participantes no seu carrinho.");
+          toast.error("Este cupom só pode ser utilizado em fórmulas participantes no seu carrinho.");
           setAppliedCoupon(null);
           return;
         }
 
         setAppliedCoupon(data);
-        toast.success("Cupom de Fidelidade de 50% aplicado com sucesso!");
+        toast.success("Cupom aplicado com sucesso!");
       }
     } catch (error) {
       toast.error("Erro de conexão ao validar cupom.");
@@ -1135,12 +1135,12 @@ export default function CarrinhoPage() {
           <div className="sticky top-32 space-y-4 rounded-[32px] border border-brand-100 bg-white p-4 shadow-xl shadow-brand-900/5 md:rounded-[40px] md:p-8">
             <h2 className="text-xl font-black text-slate-900">Resumo</h2>
 
-            {/* Campo Cupom de Fidelidade */}
-            {session && hasQualifyingProduct && (
+            {/* Campo Cupom */}
+            {session && (
               <div className="border-b border-brand-50 pb-4 space-y-3">
                 <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <Tags size={12} className="text-amber-500" />
-                  Cupom (50% OFF)
+                  Cupom
                 </label>
 
                 {appliedCoupon ? (
@@ -1167,7 +1167,7 @@ export default function CarrinhoPage() {
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="Ex: SELO-XXXXXX"
+                        placeholder="Digite seu cupom"
                         value={couponCodeInput}
                         onChange={(e) => setCouponCodeInput(e.target.value)}
                         className="flex-1 rounded-xl border border-brand-100 bg-white px-3 py-2 text-xs uppercase tracking-wider focus:border-brand-600 outline-none transition"
@@ -1183,9 +1183,9 @@ export default function CarrinhoPage() {
                     </div>
 
                     {/* Atalhos rápidos para os cupons do usuário */}
-                    {userCoupons.length > 0 && (
+                    {userCoupons.length > 0 && hasQualifyingProduct && (
                       <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Seus cupons de 50% OFF disponíveis:</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Seus cupons disponíveis:</p>
                         <div className="flex flex-wrap gap-1.5">
                           {userCoupons.map((c: any) => (
                             <button
