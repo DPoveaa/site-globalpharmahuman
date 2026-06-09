@@ -92,9 +92,10 @@ export function AccountManager({ initialUser }: { initialUser: any }) {
     name: initialUser.name || "",
     phone: initialUser.phone || "",
     cpf: initialUser.cpf ? (initialUser.cpf.length <= 11
-      ? initialUser.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
-      : initialUser.cpf.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5"))
+      ? initialUser.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.***.***-$4")
+      : initialUser.cpf.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.***.***/$4-$5"))
       : "",
+    oldPassword: "",
     password: "",
     confirmPassword: ""
   });
@@ -172,6 +173,10 @@ export function AccountManager({ initialUser }: { initialUser: any }) {
       toast.error("As senhas não coincidem");
       return;
     }
+    if (profileData.password && !profileData.oldPassword) {
+      toast.error("Você precisa informar a senha atual para alterá-la");
+      return;
+    }
 
     setUpdatingProfile(true);
     try {
@@ -181,15 +186,21 @@ export function AccountManager({ initialUser }: { initialUser: any }) {
         body: JSON.stringify({
           name: profileData.name,
           phone: profileData.phone,
-          cpf: profileData.cpf.replace(/\D/g, ""),
-          ...(profileData.password ? { password: profileData.password } : {})
+          ...(profileData.password ? { 
+            password: profileData.password,
+            oldPassword: profileData.oldPassword
+          } : {})
         })
       });
 
       if (res.ok) {
-        toast.success("Perfil updated com sucesso!");
-        setProfileData(prev => ({ ...prev, password: "", confirmPassword: "" }));
-        // Idealmente aqui daríamos um refresh na página ou sessão
+        toast.success("Perfil atualizado com sucesso!");
+        setProfileData(prev => ({
+          ...prev,
+          oldPassword: "",
+          password: "",
+          confirmPassword: ""
+        }));
       } else {
         const data = await res.json();
         toast.error(data.message || "Erro ao atualizar perfil");
@@ -658,7 +669,7 @@ export function AccountManager({ initialUser }: { initialUser: any }) {
                     />
                   </div>
                   <div className="space-y-1.5 opacity-60">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">E-mail (Não alterável)</label>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">E-mail</label>
                     <input
                       disabled
                       value={initialUser.email}
@@ -674,22 +685,12 @@ export function AccountManager({ initialUser }: { initialUser: any }) {
                       className="w-full rounded-2xl border border-brand-100 bg-brand-50/30 px-5 py-3 text-sm outline-none transition focus:border-brand-600 focus:bg-white focus:ring-4 focus:ring-brand-600/5"
                     />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 opacity-60">
                     <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">CPF</label>
                     <input
+                      disabled
                       value={profileData.cpf}
-                      onChange={e => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        let formatted = val;
-                        if (val.length <= 11) {
-                          formatted = val.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-                        } else {
-                          formatted = val.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-                        }
-                        setProfileData({ ...profileData, cpf: formatted });
-                      }}
-                      placeholder="000.000.000-00"
-                      className="w-full rounded-2xl border border-brand-100 bg-brand-50/30 px-5 py-3 text-sm outline-none transition focus:border-brand-600 focus:bg-white focus:ring-4 focus:ring-brand-600/5"
+                      className="w-full cursor-not-allowed rounded-2xl border border-brand-100 bg-slate-100 px-5 py-3 text-sm outline-none"
                     />
                   </div>
                 </div>
@@ -703,11 +704,21 @@ export function AccountManager({ initialUser }: { initialUser: any }) {
                   </div>
 
                   <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Senha Atual</label>
+                      <input
+                        type="password"
+                        placeholder="Digite sua senha atual"
+                        value={profileData.oldPassword}
+                        onChange={e => setProfileData({ ...profileData, oldPassword: e.target.value })}
+                        className="w-full rounded-2xl border border-brand-100 bg-white px-5 py-3 text-sm outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-600/5"
+                      />
+                    </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Nova Senha</label>
                       <input
                         type="password"
-                        placeholder="Deixe em branco para não alterar"
+                        placeholder="Nova senha (min. 6 caracteres)"
                         value={profileData.password}
                         onChange={e => setProfileData({ ...profileData, password: e.target.value })}
                         className="w-full rounded-2xl border border-brand-100 bg-white px-5 py-3 text-sm outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-600/5"

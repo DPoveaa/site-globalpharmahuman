@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
-import { Zap, Truck, CreditCard, Shield, ChevronRight, Pill, Heart, Dumbbell, Leaf, Apple, Baby, Package, Sparkles } from "lucide-react";
+import { Zap, Truck, CreditCard, Shield, ChevronRight } from "lucide-react";
 import { Carousel } from "@/components/carousel";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -98,17 +98,7 @@ export default async function HomePage() {
   const featuredConfig = featuredConfigJson?.value ? JSON.parse(featuredConfigJson.value) : { showOnHome: true, order: -10, homeTitle: "Ofertas Imperdíveis" };
   const latestConfig = latestConfigJson?.value ? JSON.parse(latestConfigJson.value) : { showOnHome: true, order: 1000, homeTitle: "Novidades Fresquinhas" };
 
-  function getCategoryIcon(slug: string) {
-    const normalized = slug.toLowerCase();
-    if (normalized.includes("vitamina") || normalized.includes("suplemento")) return Pill;
-    if (normalized.includes("beleza") || normalized.includes("colageno") || normalized.includes("cosmetico")) return Heart;
-    if (normalized.includes("imunidade") || normalized.includes("defesa")) return Shield;
-    if (normalized.includes("energia") || normalized.includes("performance") || normalized.includes("esport")) return Dumbbell;
-    if (normalized.includes("emagrece") || normalized.includes("fit") || normalized.includes("natural")) return Leaf;
-    if (normalized.includes("saude") || normalized.includes("bem-estar")) return Apple;
-    if (normalized.includes("infantil") || normalized.includes("kids") || normalized.includes("bebe")) return Baby;
-    return Package;
-  }
+
 
   const sections = [
     ...(featuredConfig.showOnHome && featuredProducts.length > 0 ? [{
@@ -187,42 +177,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Explore por Categoria Quick Section */}
-      {categories.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 md:px-8 animate-slide-up" style={{ animationDelay: "150ms" }}>
-          <div className="mb-4 flex flex-col justify-between border-b border-brand-50 pb-3 md:mb-6 sm:flex-row sm:items-end">
-            <div className="space-y-0.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Navegue por Fórmulas</p>
-              <h2 className="text-xl font-black text-slate-900 md:text-2xl">Explore por Categoria</h2>
-            </div>
-          </div>
-          
-          <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 lg:grid-cols-6 lg:gap-4 md:[&::-webkit-scrollbar]:auto">
-            {categories.map((cat) => {
-              const IconComponent = getCategoryIcon(cat.slug);
-              return (
-                <Link
-                  key={cat.id}
-                  href={`/catalogo?categoria=${cat.slug}`}
-                  className="flex w-max shrink-0 snap-start items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md md:w-auto text-left group"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition-transform duration-300 group-hover:scale-105 group-hover:bg-brand-600 group-hover:text-white">
-                    <IconComponent size={20} />
-                  </div>
-                  <div className="min-w-0 pr-1">
-                    <p className="truncate text-xs font-bold text-slate-800 group-hover:text-brand-600 transition-colors leading-tight">
-                      {cat.name}
-                    </p>
-                    <p className="text-[9px] font-medium text-slate-400 mt-0.5">
-                      {cat.products.length} {cat.products.length === 1 ? "produto" : "produtos"}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
+
 
       {/* Seções Dinâmicas (Destaque, Lançamentos, Categorias) */}
       {sections.map((section) => (

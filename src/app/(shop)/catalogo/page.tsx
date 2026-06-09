@@ -12,6 +12,7 @@ type Props = {
     minPrice?: string;
     maxPrice?: string;
     sort?: string;
+    fidelidade?: string;
   }>;
 };
 
@@ -45,6 +46,7 @@ export default async function CatalogoPage({ searchParams }: Props) {
   const minPrice = filters.minPrice || "";
   const maxPrice = filters.maxPrice || "";
   const sort = filters.sort || "newest";
+  const fidelidadeOnly = filters.fidelidade === "1";
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
   const session = await getServerSession(authOptions);
@@ -53,7 +55,7 @@ export default async function CatalogoPage({ searchParams }: Props) {
 
   const [productsRes, categoriesRes, favoritesRes] = await Promise.all([
     fetch(
-      `${apiUrl}/catalog/products?q=${query}&category=${categorySlug}&promotions=${promotionsOnly ? "1" : ""}&minPrice=${minPrice}&maxPrice=${maxPrice}&sort=${sort}`,
+      `${apiUrl}/catalog/products?q=${query}&category=${categorySlug}&promotions=${promotionsOnly ? "1" : ""}&minPrice=${minPrice}&maxPrice=${maxPrice}&sort=${sort}&fidelidade=${fidelidadeOnly ? "1" : ""}`,
       fetchOptions
     ),
     fetch(`${apiUrl}/catalog/categories`, fetchOptions),
@@ -82,6 +84,11 @@ export default async function CatalogoPage({ searchParams }: Props) {
       <div className="mb-10 text-center md:text-left">
         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-600">Explore Nossa Linha</p>
         <h1 className="mt-2 text-4xl font-black text-slate-900 md:text-5xl">Catálogo de Produtos</h1>
+        {fidelidadeOnly && (
+          <p className="mt-3 text-xs font-black uppercase tracking-wider text-brand-700 bg-brand-50/80 inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-brand-100 shadow-sm animate-in fade-in duration-300">
+            ✨ Mostrando fórmulas participantes do Programa de Fidelidade
+          </p>
+        )}
       </div>
 
       <CatalogFilters categories={categories} />

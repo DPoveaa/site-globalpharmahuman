@@ -192,9 +192,8 @@ export default function AdminHeaderNavPage() {
   const [isColorsExpanded, setIsColorsExpanded] = useState(false);
   const [isNavItemsExpanded, setIsNavItemsExpanded] = useState(false);
   const [isBannersExpanded, setIsBannersExpanded] = useState(false);
-  const [categoryToAdd, setCategoryToAdd] = useState("");
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [categoryModalTarget, setCategoryModalTarget] = useState<"menu" | "banner" | null>(null);
+  const [categoryModalTarget, setCategoryModalTarget] = useState<"menu" | "banner" | "homeCategory" | null>(null);
   const [categorySearchQuery, setCategorySearchQuery] = useState("");
 
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -234,7 +233,7 @@ export default function AdminHeaderNavPage() {
     formData.append("image", file);
 
     try {
-      const res = await fetch("/api/admin/upload", {
+      const res = await fetch("/api/admin/upload?type=banner", {
         method: "POST",
         body: formData
       });
@@ -1051,27 +1050,17 @@ export default function AdminHeaderNavPage() {
 
         {isHomeCategoriesExpanded && (
           <div className="p-6">
-            <div className="mb-6 flex gap-2">
-              <select
-                value={categoryToAdd}
-                onChange={(e) => setCategoryToAdd(e.target.value)}
-                className="w-full md:w-1/2 rounded-xl border border-brand-200 px-4 py-2.5 text-sm outline-none focus:border-brand-500"
-              >
-                <option value="">Selecione uma categoria para adicionar...</option>
-                {categories.filter(c => !c.showOnHome).map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
+            <div className="mb-6 flex justify-start">
               <button
-                disabled={!categoryToAdd || loading}
+                type="button"
                 onClick={() => {
-                  handleToggleCategoryHome(categoryToAdd, false);
-                  setCategoryToAdd("");
+                  setCategoryModalTarget("homeCategory");
+                  setIsCategoryModalOpen(true);
                 }}
-                className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-700 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700 shadow-sm"
               >
                 <Plus size={18} />
-                Adicionar
+                Adicionar Categoria...
               </button>
             </div>
 
@@ -1268,37 +1257,24 @@ export default function AdminHeaderNavPage() {
                       </select>
                     </div>
                     {bannerDestination === "CATEGORY" ? (
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         <label className="text-xs font-bold uppercase text-slate-500">Categoria do Banner</label>
-                        <select
-                          value={bannerCategorySlug}
-                          onChange={(e) => {
-                            const slug = e.target.value;
-                            setBannerCategorySlug(slug);
-                            if (!editingBanner) return;
-                            setEditingBanner({
-                              ...editingBanner,
-                              link: slug ? `/catalogo?categoria=${encodeURIComponent(slug)}` : "/catalogo"
-                            });
-                          }}
-                          className="w-full rounded-xl border border-brand-200 px-4 py-2.5 text-sm outline-none focus:border-brand-500"
-                        >
-                          <option value="">Selecione uma categoria</option>
-                          {categories.map((cat) => (
-                            <option key={cat.id} value={cat.slug}>{cat.name}</option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCategoryModalTarget("banner");
-                            setIsCategoryModalOpen(true);
-                          }}
-                          className="flex items-center gap-1.5 text-xs font-bold text-brand-600 hover:text-brand-700 mt-2 transition hover:underline animate-fade-in"
-                        >
-                          <Sparkles size={14} className="text-brand-500 animate-pulse" />
-                          Comparar produtos por categoria
-                        </button>
+                        <div className="flex gap-2">
+                          <div className="flex-1 min-w-0 rounded-xl border border-brand-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 truncate font-semibold">
+                            {linkedCategorySlugByName.get(bannerCategorySlug) || "Nenhuma categoria selecionada"}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCategoryModalTarget("banner");
+                              setIsCategoryModalOpen(true);
+                            }}
+                            className="flex items-center gap-1.5 rounded-xl bg-brand-50 border border-brand-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-brand-100 transition shadow-sm shrink-0"
+                          >
+                            <Sparkles size={14} className="text-brand-500 animate-pulse" />
+                            Selecionar...
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-1">
@@ -1441,10 +1417,18 @@ export default function AdminHeaderNavPage() {
             <div className="flex items-center justify-between border-b border-brand-50 bg-slate-50/50 px-6 py-5">
               <div>
                 <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                  <span>📊 Comparador de Categorias</span>
+                  <span>
+                    {categoryModalTarget === "homeCategory"
+                      ? "➕ Adicionar Categoria à Home"
+                      : categoryModalTarget === "banner"
+                      ? "🖼️ Selecionar Categoria para o Banner"
+                      : "📊 Selecionar Categoria para o Menu"}
+                  </span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Ordens decrescentes de produtos. Clique para selecionar como destino.
+                  {categoryModalTarget === "homeCategory"
+                    ? "Selecione uma categoria abaixo para adicioná-la à página inicial do site."
+                    : "Pesquise e selecione a categoria desejada com base no número de produtos."}
                 </p>
               </div>
               <button
@@ -1479,43 +1463,62 @@ export default function AdminHeaderNavPage() {
             {/* Categories List */}
             <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-slate-50/30 max-h-[50vh]">
               {sortedCategories.length > 0 ? (
-                sortedCategories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => {
-                      if (categoryModalTarget === "menu") {
-                        setNavCategoryId(cat.id);
-                      } else if (categoryModalTarget === "banner") {
-                        setBannerCategorySlug(cat.slug);
-                        if (editingBanner) {
-                          setEditingBanner({
-                            ...editingBanner,
-                            link: `/catalogo?categoria=${encodeURIComponent(cat.slug)}`
-                          });
+                sortedCategories.map((cat) => {
+                  const isAlreadyOnHome = cat.showOnHome;
+                  const isDisabled = categoryModalTarget === "homeCategory" && isAlreadyOnHome;
+
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      disabled={isDisabled}
+                      onClick={() => {
+                        if (categoryModalTarget === "menu") {
+                          setNavCategoryId(cat.id);
+                        } else if (categoryModalTarget === "banner") {
+                          setBannerCategorySlug(cat.slug);
+                          if (editingBanner) {
+                            setEditingBanner({
+                              ...editingBanner,
+                              link: `/catalogo?categoria=${encodeURIComponent(cat.slug)}`
+                            });
+                          }
+                        } else if (categoryModalTarget === "homeCategory") {
+                          handleToggleCategoryHome(cat.id, false);
                         }
-                      }
-                      setIsCategoryModalOpen(false);
-                      setCategorySearchQuery("");
-                      toast.success(`Categoria "${cat.name}" selecionada!`);
-                    }}
-                    className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-sm text-left group"
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-bold text-slate-800 group-hover:text-brand-600 transition-colors">
-                        {cat.name}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-medium font-mono mt-0.5">
-                        slug: {cat.slug}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-700">
-                        {cat._count?.products || 0} {cat._count?.products === 1 ? "produto" : "produtos"}
-                      </span>
-                    </div>
-                  </button>
-                ))
+                        setIsCategoryModalOpen(false);
+                        setCategorySearchQuery("");
+                        if (categoryModalTarget !== "homeCategory") {
+                          toast.success(`Categoria "${cat.name}" selecionada!`);
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 transition-all duration-300 text-left group ${
+                        isDisabled
+                          ? "opacity-50 cursor-not-allowed bg-slate-100/50"
+                          : "hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-sm"
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className={`font-bold transition-colors ${isDisabled ? "text-slate-500" : "text-slate-800 group-hover:text-brand-600"}`}>
+                          {cat.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium font-mono mt-0.5">
+                          slug: {cat.slug}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isDisabled && (
+                          <span className="inline-flex items-center justify-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                            Já na Home
+                          </span>
+                        )}
+                        <span className="inline-flex items-center justify-center rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-700">
+                          {cat._count?.products || 0} {cat._count?.products === 1 ? "produto" : "produtos"}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
               ) : (
                 <div className="p-8 text-center text-slate-400 text-xs italic">
                   Nenhuma categoria correspondente encontrada.

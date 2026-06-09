@@ -13,8 +13,12 @@ export async function POST(req: Request) {
   const token = session.accessToken;
   const formData = await req.formData();
 
+  const { searchParams } = new URL(req.url);
+  const queryStr = searchParams.toString();
+  const destUrl = queryStr ? `${apiUrl}/admin/upload?${queryStr}` : `${apiUrl}/admin/upload`;
+
   try {
-    const res = await fetch(`${apiUrl}/admin/upload`, {
+    const res = await fetch(destUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`

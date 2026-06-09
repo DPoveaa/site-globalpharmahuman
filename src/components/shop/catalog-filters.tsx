@@ -21,6 +21,7 @@ export function CatalogFilters({ categories }: { categories: Category[] }) {
   const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") || "");
   const [sort, setSort] = useState(searchParams.get("sort") || "newest");
   const [promotions, setPromotions] = useState(searchParams.get("promocoes") === "1");
+  const [fidelidade, setFidelidade] = useState(searchParams.get("fidelidade") === "1");
 
   const applyFilters = useCallback(() => {
     const params = new URLSearchParams();
@@ -30,9 +31,10 @@ export function CatalogFilters({ categories }: { categories: Category[] }) {
     if (maxPrice) params.set("maxPrice", maxPrice);
     if (sort) params.set("sort", sort);
     if (promotions) params.set("promocoes", "1");
+    if (fidelidade) params.set("fidelidade", "1");
 
     router.push(`/catalogo?${params.toString()}`);
-  }, [q, category, minPrice, maxPrice, sort, promotions, router]);
+  }, [q, category, minPrice, maxPrice, sort, promotions, fidelidade, router]);
 
   const clearFilters = () => {
     setQ("");
@@ -41,6 +43,7 @@ export function CatalogFilters({ categories }: { categories: Category[] }) {
     setMaxPrice("");
     setSort("newest");
     setPromotions(false);
+    setFidelidade(false);
     router.push("/catalogo");
   };
 
@@ -52,6 +55,7 @@ export function CatalogFilters({ categories }: { categories: Category[] }) {
     setMaxPrice(searchParams.get("maxPrice") || "");
     setSort(searchParams.get("sort") || "newest");
     setPromotions(searchParams.get("promocoes") === "1");
+    setFidelidade(searchParams.get("fidelidade") === "1");
   }, [searchParams]);
 
   return (
@@ -158,16 +162,27 @@ export function CatalogFilters({ categories }: { categories: Category[] }) {
 
             {/* Options */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ofertas</label>
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-brand-50 bg-slate-50 px-4 py-3 transition hover:bg-white hover:border-brand-500">
-                <input
-                  type="checkbox"
-                  checked={promotions}
-                  onChange={(e) => setPromotions(e.target.checked)}
-                  className="h-5 w-5 rounded-lg border-brand-200 text-brand-600 focus:ring-brand-500"
-                />
-                <span className="text-sm font-bold text-slate-700">Somente Promoções</span>
-              </label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Opções Especiais</label>
+              <div className="flex flex-col gap-2">
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-brand-50 bg-slate-50 px-4 py-2.5 transition hover:bg-white hover:border-brand-500">
+                  <input
+                    type="checkbox"
+                    checked={promotions}
+                    onChange={(e) => setPromotions(e.target.checked)}
+                    className="h-5 w-5 rounded-lg border-brand-200 text-brand-600 focus:ring-brand-500"
+                  />
+                  <span className="text-xs font-bold text-slate-700">Somente Promoções</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-brand-50 bg-slate-50 px-4 py-2.5 transition hover:bg-white hover:border-brand-500">
+                  <input
+                    type="checkbox"
+                    checked={fidelidade}
+                    onChange={(e) => setFidelidade(e.target.checked)}
+                    className="h-5 w-5 rounded-lg border-brand-200 text-brand-600 focus:ring-brand-500"
+                  />
+                  <span className="text-xs font-bold text-slate-700">Acumulam Selos</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>

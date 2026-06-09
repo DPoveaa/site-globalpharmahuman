@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import {
   Star, Plus, Search,
-  CheckCircle2, Ticket, Users, AlertCircle, Copy
+  CheckCircle2, Ticket, Users, AlertCircle, Copy, X, Settings, Check
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -28,9 +28,84 @@ export default function AdminLoyaltyPage() {
   const [stampIdentifier, setStampIdentifier] = useState("");
   const [couponCode, setCouponCode] = useState("");
 
+  const [products, setProducts] = useState<{ id: string; name: string; sku: string }[]>([]);
+  const [qualifyingProductIds, setQualifyingProductIds] = useState<string[]>([]);
+  const [tempProductIds, setTempProductIds] = useState<string[]>([]);
+  const [ruleMode, setRuleMode] = useState<"INCLUSION" | "EXCLUSION">("INCLUSION");
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+
   useEffect(() => {
     fetchCoupons();
+    fetchProductsAndSettings();
   }, []);
+
+  useEffect(() => {
+    if (isProductModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isProductModalOpen]);
+
+  async function fetchProductsAndSettings() {
+    try {
+      const [productsRes, settingsRes, ruleModeRes] = await Promise.all([
+        fetch("/api/admin/products"),
+        fetch("/api/catalog/settings/LOYALTY_QUALIFYING_PRODUCTS").catch(() => null),
+        fetch("/api/catalog/settings/LOYALTY_RULE_MODE").catch(() => null)
+      ]);
+
+      if (productsRes.ok) {
+        const prodData = await productsRes.json();
+        setProducts(prodData.map((p: any) => ({ id: p.id, name: p.name, sku: p.sku })));
+      }
+
+      if (settingsRes && settingsRes.ok) {
+        const setting = await settingsRes.json();
+        if (setting?.value) {
+          setQualifyingProductIds(JSON.parse(setting.value));
+        }
+      }
+
+      if (ruleModeRes && ruleModeRes.ok) {
+        const modeSetting = await ruleModeRes.json();
+        if (modeSetting?.value) {
+          setRuleMode(modeSetting.value as "INCLUSION" | "EXCLUSION");
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao buscar produtos e configurações:", error);
+    }
+  }
+
+  async function handleSaveSettings() {
+    setSavingSettings(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "LOYALTY_RULE_MODE",
+          value: ruleMode
+        })
+      });
+
+      if (res.ok) {
+        toast.success("Modo de operação da regra salvo com sucesso!");
+      } else {
+        toast.error("Erro ao salvar modo da regra.");
+      }
+    } catch {
+      toast.error("Erro ao conectar com o servidor.");
+    } finally {
+      setSavingSettings(false);
+    }
+  }
 
   async function fetchCoupons() {
     setLoading(true);
@@ -59,7 +134,7 @@ export default function AdminLoyaltyPage() {
       if (res.ok) {
         toast.success(data.message);
         if (data.couponGenerated) {
-          toast.success("O cliente ganhou um cupom!");
+          toast.success("O cliente completou 5 selos e ganhou um vale de 50%!");
           fetchCoupons();
         }
         setStampIdentifier("");
@@ -86,7 +161,7 @@ export default function AdminLoyaltyPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message);
+        toast.success("Vale de 50% validado e utilizado com sucesso!");
         setCouponCode("");
         fetchCoupons();
       } else {
@@ -100,23 +175,175 @@ export default function AdminLoyaltyPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="rounded-2xl bg-amber-100 p-3 text-amber-600 shadow-sm">
             <Star size={24} fill="currentColor" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Sistema de Selos</h1>
-            <p className="text-sm font-medium text-slate-500">Gerencie selos manuais e valide cupons de desconto.</p>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Fidelidade e Selos</h1>
+            <p className="text-sm font-medium text-slate-500">Gerencie regras de pontuação de selos, vales de 50% e relatórios.</p>
           </div>
         </div>
       </div>
 
+      {/* Regras e Configuração do Programa */}
+      <section className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm space-y-6 md:p-8">
+        <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+            <Settings size={20} />
+          </div>
+          <div>
+            <h2 className="text-lg font-black text-slate-900">Configuração de Elegibilidade</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Determine como o sistema analisa as fórmulas nos pedidos para dar os selos.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
+          {/* Seleção do Modo de Regra */}
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">Modo de Operação</span>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setRuleMode("INCLUSION")}
+                  className={`flex flex-col items-start gap-2 rounded-2xl p-4 border text-left transition-all ${ruleMode === "INCLUSION"
+                      ? "border-amber-500 bg-amber-50/20 shadow-sm ring-2 ring-amber-500/20"
+                      : "border-slate-100 hover:border-slate-200 hover:bg-slate-50/50"
+                    }`}
+                >
+                  <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${ruleMode === "INCLUSION" ? "border-amber-500 text-amber-500" : "border-slate-300"
+                    }`}>
+                    {ruleMode === "INCLUSION" && <div className="h-2.5 w-2.5 rounded-full bg-amber-500" />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-900">Lista de Inclusão</p>
+                    <p className="text-[10px] text-slate-500 font-medium mt-0.5 leading-normal">
+                      Apenas os produtos selecionados gerarão selos no pedido.
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRuleMode("EXCLUSION")}
+                  className={`flex flex-col items-start gap-2 rounded-2xl p-4 border text-left transition-all ${ruleMode === "EXCLUSION"
+                      ? "border-amber-500 bg-amber-50/20 shadow-sm ring-2 ring-amber-500/20"
+                      : "border-slate-100 hover:border-slate-200 hover:bg-slate-50/50"
+                    }`}
+                >
+                  <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${ruleMode === "EXCLUSION" ? "border-amber-500 text-amber-500" : "border-slate-300"
+                    }`}>
+                    {ruleMode === "EXCLUSION" && <div className="h-2.5 w-2.5 rounded-full bg-amber-500" />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-900">Lista de Exclusão</p>
+                    <p className="text-[10px] text-slate-500 font-medium mt-0.5 leading-normal">
+                      Todos acumulam selo, EXCETO os produtos selecionados.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100 text-xs font-medium text-slate-600 leading-relaxed space-y-1">
+              <p className="font-bold text-slate-800">Resumo da Regra Ativa:</p>
+              {ruleMode === "INCLUSION" ? (
+                <p>O cliente ganhará selo caso compre **pelo menos um** dos produtos marcados na lista.</p>
+              ) : (
+                <p>O cliente ganhará selo com qualquer produto, **a menos que** o pedido contenha apenas os produtos excluídos.</p>
+              )}
+              {qualifyingProductIds.length === 0 && (
+                <p className="text-amber-600 font-bold mt-1">
+                  ⚠️ Nenhum produto configurado. Todos os produtos pontuarão por padrão.
+                </p>
+              )}
+            </div>
+
+            <button
+              onClick={handleSaveSettings}
+              disabled={savingSettings}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-slate-900 py-3.5 text-sm font-bold text-white transition-all hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+            >
+              {savingSettings ? "Salvando..." : "Salvar Alterações"}
+            </button>
+          </div>
+
+          {/* Gerenciador de Produtos e Lista */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">
+                {ruleMode === "INCLUSION" ? "Produtos Elegíveis" : "Produtos Excluídos"} ({qualifyingProductIds.length})
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setTempProductIds([...qualifyingProductIds]);
+                  setIsProductModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm"
+              >
+                <Plus size={14} className="text-amber-500" />
+                Gerenciar Lista
+              </button>
+            </div>
+
+            <div className="max-h-64 overflow-y-auto rounded-3xl border border-slate-100 bg-slate-50/50 p-4 space-y-2 min-h-[140px] custom-scrollbar">
+              {qualifyingProductIds.map((id) => {
+                const prod = products.find((p) => p.id === id);
+                return (
+                  <div key={id} className="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border border-slate-100 shadow-sm text-xs font-bold text-slate-700">
+                    <div className="min-w-0 pr-2">
+                      <p className="truncate text-slate-800">{prod ? prod.name : "Produto Removido / Carregando..."}</p>
+                      <p className="text-[9px] text-slate-400 font-mono mt-0.5">SKU: {prod?.sku || "---"}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const updatedList = qualifyingProductIds.filter((item) => item !== id);
+                        try {
+                          const res = await fetch("/api/admin/settings", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              key: "LOYALTY_QUALIFYING_PRODUCTS",
+                              value: JSON.stringify(updatedList)
+                            })
+                          });
+                          if (res.ok) {
+                            setQualifyingProductIds(updatedList);
+                            toast.success("Fórmula removida com sucesso!");
+                          } else {
+                            toast.error("Erro ao remover fórmula da regra.");
+                          }
+                        } catch {
+                          toast.error("Erro de conexão ao remover fórmula.");
+                        }
+                      }}
+                      className="text-[10px] font-bold text-rose-500 hover:text-rose-700 transition cursor-pointer shrink-0"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                );
+              })}
+              {qualifyingProductIds.length === 0 && (
+                <div className="text-center text-xs text-slate-400 italic py-10">
+                  Nenhum produto adicionado. Clique em "Gerenciar Lista" acima para configurar.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Grid de Operações */}
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Dar Selo Manual */}
         <section className="space-y-6">
-          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+          <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                 <Users size={20} />
@@ -135,9 +362,6 @@ export default function AdminLoyaltyPage() {
                   className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold focus:border-blue-500 focus:bg-white outline-none transition-all"
                   required
                 />
-                <p className="text-[11px] text-slate-400 px-1 italic">
-                  Busque o cliente para dar um selo extra.
-                </p>
               </div>
 
               <button
@@ -151,19 +375,19 @@ export default function AdminLoyaltyPage() {
           </div>
         </section>
 
-        {/* Validar Cupom */}
+        {/* Validar Vale de 50% */}
         <section className="space-y-6">
-          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm border-amber-200 bg-amber-50/10">
+          <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm border-amber-200 bg-amber-50/10">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
                 <Ticket size={20} />
               </div>
-              <h2 className="text-lg font-black text-slate-900">Validar Cupom de 50%</h2>
+              <h2 className="text-lg font-black text-slate-900">Validar Vale de 50%</h2>
             </div>
 
             <form onSubmit={handleValidateCoupon} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 px-1">Código do Cupom</label>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 px-1">Código do Vale / Leitor QR</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -184,30 +408,30 @@ export default function AdminLoyaltyPage() {
                 disabled={validating}
                 className="w-full flex items-center justify-center gap-2 rounded-2xl bg-amber-500 py-3.5 text-sm font-bold text-white transition-all hover:bg-amber-600 disabled:opacity-50"
               >
-                {validating ? "Validando..." : <><CheckCircle2 size={18} /> Validar e Usar Cupom</>}
+                {validating ? "Validando..." : <><CheckCircle2 size={18} /> Validar e Dar Desconto</>}
               </button>
             </form>
           </div>
         </section>
       </div>
 
-      {/* Lista de Cupons Gerados */}
+      {/* Lista de Vales de 50% Gerados */}
       <section>
-        <div className="rounded-3xl border border-slate-100 bg-white overflow-hidden shadow-sm">
+        <div className="rounded-[32px] border border-slate-100 bg-white overflow-hidden shadow-sm">
           <div className="bg-slate-50/50 px-6 py-4 flex items-center justify-between border-b border-slate-100">
             <h2 className="font-black text-slate-900 flex items-center gap-2">
-              <Ticket size={20} className="text-blue-500" /> Todos os Cupons Gerados
+              <Ticket size={20} className="text-amber-500" /> Todos os Vales Gerados (50%)
             </h2>
             <span className="text-xs font-bold bg-white text-slate-500 px-3 py-1 rounded-full border border-slate-200">
-              {coupons.length} cupons
+              {coupons.length} vales
             </span>
           </div>
 
           <div className="divide-y divide-slate-50">
             {loading ? (
-              <div className="p-8 text-center text-slate-400 animate-pulse">Carregando cupons...</div>
+              <div className="p-8 text-center text-slate-400 animate-pulse">Carregando vales...</div>
             ) : coupons.length === 0 ? (
-              <div className="p-12 text-center text-slate-400">Nenhum cupom gerado ainda.</div>
+              <div className="p-12 text-center text-slate-400">Nenhum vale gerado ainda.</div>
             ) : (
               coupons.map((coupon, idx) => (
                 <div key={coupon.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 gap-4 hover:bg-slate-50/50 transition-colors">
@@ -248,6 +472,164 @@ export default function AdminLoyaltyPage() {
           </div>
         </div>
       </section>
+
+      {/* Modal Seletor de Produtos */}
+      {isProductModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+            onClick={() => setIsProductModalOpen(false)}
+          />
+
+          {/* Modal Body */}
+          <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-2xl animate-scale-in flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-5">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <span>📦 Gerenciar Fórmulas da Regra</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Marque as fórmulas que farão parte da lista de {ruleMode === "INCLUSION" ? "inclusão (dão selos)" : "exclusão (NÃO dão selos)"}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsProductModalOpen(false)}
+                className="rounded-full bg-white p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 shadow-sm border border-slate-100 transition animate-scale-in"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="p-4 border-b border-slate-100 bg-white flex items-center gap-2">
+              <div className="relative w-full">
+                <input
+                  type="text"
+                  placeholder="Buscar produto por nome ou SKU..."
+                  value={productSearchQuery}
+                  onChange={(e) => setProductSearchQuery(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm outline-none focus:border-amber-500 focus:bg-white transition"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <Search size={16} />
+                </div>
+              </div>
+              {productSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setProductSearchQuery("")}
+                  className="text-xs text-slate-400 hover:text-slate-600 font-bold shrink-0"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+
+            {/* Products List */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-slate-50/30 max-h-[45vh] custom-scrollbar">
+              {(() => {
+                const filtered = products.filter(p =>
+                  p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+                  p.sku.toLowerCase().includes(productSearchQuery.toLowerCase())
+                );
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="p-12 text-center text-slate-400 text-xs italic">
+                      Nenhum produto correspondente encontrado.
+                    </div>
+                  );
+                }
+
+                return filtered.map((p) => {
+                  const isChecked = tempProductIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        if (isChecked) {
+                          setTempProductIds(tempProductIds.filter(id => id !== p.id));
+                        } else {
+                          setTempProductIds([...tempProductIds, p.id]);
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between p-4 rounded-2xl bg-white border transition-all duration-300 text-left group ${isChecked
+                          ? "border-amber-500 bg-amber-50/10 shadow-sm"
+                          : "border-slate-100 hover:border-slate-200"
+                        }`}
+                    >
+                      <div className="flex flex-col min-w-0 pr-4">
+                        <span className={`font-bold transition-colors ${isChecked ? "text-amber-800" : "text-slate-800"}`}>
+                          {p.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium font-mono mt-0.5">
+                          SKU: {p.sku}
+                        </span>
+                      </div>
+                      <div className="flex items-center shrink-0">
+                        {isChecked ? (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white shadow-sm shadow-amber-500/20">
+                            <Check size={14} strokeWidth={3} />
+                          </div>
+                        ) : (
+                          <div className="h-6 w-6 rounded-full border-2 border-slate-200 bg-white group-hover:border-slate-300" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-6 py-4">
+              <span className="text-xs font-bold text-slate-500">
+                {tempProductIds.length} selecionado(s)
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsProductModalOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/admin/settings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          key: "LOYALTY_QUALIFYING_PRODUCTS",
+                          value: JSON.stringify(tempProductIds)
+                        })
+                      });
+                      if (res.ok) {
+                        setQualifyingProductIds(tempProductIds);
+                        setIsProductModalOpen(false);
+                        toast.success("Lista de fórmulas atualizada com sucesso!");
+                      } else {
+                        toast.error("Erro ao salvar fórmulas da regra.");
+                      }
+                    } catch {
+                      toast.error("Erro de conexão ao salvar fórmulas.");
+                    }
+                  }}
+                  className="rounded-xl bg-amber-500 px-5 py-2 text-xs font-bold text-white hover:bg-amber-600 transition"
+                >
+                  Confirmar Seleção
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
