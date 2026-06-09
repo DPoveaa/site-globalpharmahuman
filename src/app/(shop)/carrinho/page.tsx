@@ -92,6 +92,15 @@ export default function CarrinhoPage() {
   const [installments, setInstallments] = useState(1);
   const [useShippingAddressForBilling, setUseShippingAddressForBilling] = useState(true);
 
+  // Loyalty states
+  const [qualifyingProductIds, setQualifyingProductIds] = useState<string[]>([]);
+  const [loyaltyRuleMode, setLoyaltyRuleMode] = useState<string>("INCLUSION");
+  const [userCoupons, setUserCoupons] = useState<any[]>([]);
+  const [couponCodeInput, setCouponCodeInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
+
   // Copy shipping info to billing if toggled
   useEffect(() => {
     if (useShippingAddressForBilling && selectedAddressId) {
@@ -105,6 +114,109 @@ export default function CarrinhoPage() {
       }
     }
   }, [selectedAddressId, addresses, useShippingAddressForBilling]);
+
+  // Fetch user loyalty coupons
+  useEffect(() => {
+    async function fetchUserCoupons() {
+      if (!session?.user) {
+        setUserCoupons([]);
+        return;
+      }
+      try {
+        const res = await fetch("/api/user/loyalty");
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.loyaltyCoupons) {
+            setUserCoupons(data.loyaltyCoupons.filter((c: any) => !c.isUsed));
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao buscar cupons do usuário:", error);
+      }
+    }
+    fetchUserCoupons();
+  }, [session]);
+
+  // Calculate loyalty discount reactively
+  useEffect(() => {
+    if (cart?.items && appliedCoupon) {
+      const qualifyingItems = cart.items.filter(item => {
+        const productId = item.product.id;
+        if (qualifyingProductIds.length === 0) return true;
+        if (loyaltyRuleMode === "INCLUSION") {
+          return qualifyingProductIds.includes(productId);
+        } else {
+          return !qualifyingProductIds.includes(productId);
+        }
+      });
+
+      if (qualifyingItems.length > 0) {
+        const highestItem = qualifyingItems.reduce((max, item) => 
+          item.product.finalPrice > max.product.finalPrice ? item : max
+        , qualifyingItems[0]);
+        setLoyaltyDiscount(Math.round(highestItem.product.finalPrice * 0.5 * 100) / 100);
+      } else {
+        setLoyaltyDiscount(0);
+      }
+    } else {
+      setLoyaltyDiscount(0);
+    }
+  }, [appliedCoupon, cart, qualifyingProductIds, loyaltyRuleMode]);
+
+  async function handleApplyCoupon(codeToApply?: string) {
+    const targetCode = (codeToApply || couponCodeInput).trim().toUpperCase();
+    if (!targetCode) {
+      toast.error("Por favor, digite o código do cupom.");
+      return;
+    }
+
+    setCheckingCoupon(true);
+    try {
+      const res = await fetch(`/api/public/coupon-details/${targetCode}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.message || "Erro ao validar cupom.");
+        setAppliedCoupon(null);
+      } else {
+        if (data.isUsed) {
+          toast.error("Este cupom já foi utilizado.");
+          setAppliedCoupon(null);
+          return;
+        }
+
+        const qualifyingItems = (cart?.items || []).filter(item => {
+          const productId = item.product.id;
+          if (qualifyingProductIds.length === 0) return true;
+          if (loyaltyRuleMode === "INCLUSION") {
+            return qualifyingProductIds.includes(productId);
+          } else {
+            return !qualifyingProductIds.includes(productId);
+          }
+        });
+
+        if (qualifyingItems.length === 0) {
+          toast.error("Este cupom de 50% de desconto só pode ser utilizado em fórmulas participantes no seu carrinho.");
+          setAppliedCoupon(null);
+          return;
+        }
+
+        setAppliedCoupon(data);
+        toast.success("Cupom de Fidelidade de 50% aplicado com sucesso!");
+      }
+    } catch (error) {
+      toast.error("Erro de conexão ao validar cupom.");
+      setAppliedCoupon(null);
+    } finally {
+      setCheckingCoupon(false);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null);
+    setCouponCodeInput("");
+    toast.success("Cupom removido.");
+  }
 
   const calculateInterest = (amount: number, installmentsCount: number) => {
     if (installmentsCount <= 1) {
@@ -148,9 +260,11 @@ export default function CarrinhoPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [cartRes, addrRes] = await Promise.all([
+      const [cartRes, addrRes, productsSettingRes, modeSettingRes] = await Promise.all([
         fetch("/api/cart"),
-        fetch("/api/user/addresses")
+        fetch("/api/user/addresses"),
+        fetch("/api/catalog/settings/LOYALTY_QUALIFYING_PRODUCTS").catch(() => null),
+        fetch("/api/catalog/settings/LOYALTY_RULE_MODE").catch(() => null)
       ]);
 
       if (cartRes.ok) {
@@ -162,6 +276,15 @@ export default function CarrinhoPage() {
         const addrData = await addrRes.json();
         setAddresses(addrData);
         if (addrData.length > 0) setSelectedAddressId(addrData[0].id);
+      }
+
+      if (productsSettingRes && productsSettingRes.ok) {
+        const setting = await productsSettingRes.json();
+        if (setting?.value) setQualifyingProductIds(JSON.parse(setting.value));
+      }
+      if (modeSettingRes && modeSettingRes.ok) {
+        const setting = await modeSettingRes.json();
+        if (setting?.value) setLoyaltyRuleMode(setting.value);
       }
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -231,6 +354,7 @@ export default function CarrinhoPage() {
           notes,
           paymentMethod,
           installments,
+          loyaltyCouponCode: appliedCoupon?.code || undefined,
           creditCard: paymentMethod === "CREDIT_CARD" ? cardInfo : undefined,
           creditCardHolderInfo: paymentMethod === "CREDIT_CARD" ? {
             ...holderInfo,
@@ -333,6 +457,7 @@ export default function CarrinhoPage() {
           notes: notes || "Pedido de teste sandbox (Admin)",
           paymentMethod,
           installments,
+          loyaltyCouponCode: appliedCoupon?.code || undefined,
           creditCard: paymentMethod === "CREDIT_CARD" ? testCardInfo : undefined,
           creditCardHolderInfo: paymentMethod === "CREDIT_CARD" ? {
             ...testHolderInfo,
@@ -899,9 +1024,9 @@ export default function CarrinhoPage() {
                           onChange={e => setInstallments(Number(e.target.value))}
                           className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-600/10"
                         >
-                          <option value={1}>1x de {formatCurrency(cart.total + (shippingInfo?.price || 0))} (Sem juros)</option>
+                          <option value={1}>1x de {formatCurrency(cart.total + (shippingInfo?.price || 0) - loyaltyDiscount)} (Sem juros)</option>
                           {Array.from({ length: 11 }, (_, i) => i + 2).map(n => {
-                            const { installmentValue, totalValue } = calculateInterest(cart.total + (shippingInfo?.price || 0), n);
+                            const { installmentValue, totalValue } = calculateInterest(cart.total + (shippingInfo?.price || 0) - loyaltyDiscount, n);
                             return (
                               <option key={n} value={n}>
                                 {n}x de {formatCurrency(installmentValue)} (Total: {formatCurrency(totalValue)})
@@ -992,6 +1117,79 @@ export default function CarrinhoPage() {
           <div className="sticky top-32 space-y-4 rounded-[32px] border border-brand-100 bg-white p-4 shadow-xl shadow-brand-900/5 md:rounded-[40px] md:p-8">
             <h2 className="text-xl font-black text-slate-900">Resumo</h2>
 
+            {/* Campo Cupom de Fidelidade */}
+            {session && (
+              <div className="border-b border-brand-50 pb-4 space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Tags size={12} className="text-amber-500" />
+                  Cupom de Fidelidade (50% OFF)
+                </label>
+
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 px-3.5 py-2 rounded-xl">
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-emerald-800 tracking-wider">
+                        {appliedCoupon.code}
+                      </p>
+                      <p className="text-[9px] font-bold text-emerald-600 uppercase mt-0.5">
+                        Fidelidade Ativada
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="p-1.5 hover:bg-emerald-100 text-emerald-500 rounded-lg transition active:scale-95 cursor-pointer"
+                      title="Remover cupom"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Ex: SELO-XXXXXX"
+                        value={couponCodeInput}
+                        onChange={(e) => setCouponCodeInput(e.target.value)}
+                        className="flex-1 rounded-xl border border-brand-100 bg-white px-3 py-2 text-xs uppercase tracking-wider focus:border-brand-600 outline-none transition"
+                      />
+                      <button
+                        type="button"
+                        disabled={checkingCoupon || !couponCodeInput.trim()}
+                        onClick={() => handleApplyCoupon()}
+                        className="rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white px-4 py-2 text-xs font-black uppercase tracking-wider transition active:scale-95 cursor-pointer shrink-0"
+                      >
+                        {checkingCoupon ? "..." : "Aplicar"}
+                      </button>
+                    </div>
+
+                    {/* Atalhos rápidos para os cupons do usuário */}
+                    {userCoupons.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Seus vales de 50% disponíveis:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {userCoupons.map((c: any) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setCouponCodeInput(c.code);
+                                handleApplyCoupon(c.code);
+                              }}
+                              className="text-[10px] font-black uppercase tracking-wider bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 px-2.5 py-1 rounded-full transition active:scale-95 cursor-pointer"
+                            >
+                              {c.code}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-3 py-4">
               <div className="space-y-3 border-b border-brand-50 pb-4">
                 {cart.items.map(item => (
@@ -1041,19 +1239,29 @@ export default function CarrinhoPage() {
               <div className="my-4 h-px bg-brand-50" />
 
               <div className="flex flex-col gap-1">
+                {loyaltyDiscount > 0 && (
+                  <div className="flex justify-between items-center text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-100/50">
+                    <span className="flex items-center gap-1.5">
+                      <Tags size={14} className="text-amber-500" />
+                      Desconto Fidelidade (50%)
+                    </span>
+                    <span className="font-extrabold">-{formatCurrency(loyaltyDiscount)}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-xl font-black text-slate-900 md:text-2xl">
                   <span>Total</span>
                   <span className="text-slate-600">
                     {formatCurrency(
                       paymentMethod === "CREDIT_CARD"
-                        ? calculateInterest(cart.total + (shippingInfo?.price || 0), installments).totalValue
-                        : cart.total + (shippingInfo?.price || 0)
+                        ? calculateInterest(cart.total + (shippingInfo?.price || 0) - loyaltyDiscount, installments).totalValue
+                        : cart.total + (shippingInfo?.price || 0) - loyaltyDiscount
                     )}
                   </span>
                 </div>
                 {paymentMethod === "CREDIT_CARD" && installments > 1 && (
                   <p className="text-right text-[10px] font-bold text-amber-600 uppercase tracking-wider">
-                    Parcelado em {installments}x de {formatCurrency(calculateInterest(cart.total + (shippingInfo?.price || 0), installments).installmentValue)} (com juros de 2.99% a.m.)
+                    Parcelado em {installments}x de {formatCurrency(calculateInterest(cart.total + (shippingInfo?.price || 0) - loyaltyDiscount, installments).installmentValue)} (com juros de 2.99% a.m.)
                   </p>
                 )}
               </div>

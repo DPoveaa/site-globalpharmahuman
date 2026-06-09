@@ -4,7 +4,8 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 import { 
   Star, Gift, Clock, 
-  CheckCircle2, Copy, Ticket, AlertCircle 
+  CheckCircle2, Copy, Ticket, AlertCircle,
+  ChevronLeft, ChevronRight, ChevronDown, X
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -41,7 +42,14 @@ export function LoyaltyInfo() {
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
   const [generatedCoupon, setGeneratedCoupon] = useState<any>(null);
 
+  // Estados para origem (URL) e controle de cupons ativos/utilizados
+  const [origin, setOrigin] = useState("");
+  const [isVouchersModalOpen, setIsVouchersModalOpen] = useState(false);
+  const [currentCouponIndex, setCurrentCouponIndex] = useState(0);
+  const [isUsedCouponsExpanded, setIsUsedCouponsExpanded] = useState(false);
+
   useEffect(() => {
+    setOrigin(window.location.origin);
     fetchLoyalty();
   }, []);
 
@@ -324,91 +332,156 @@ export function LoyaltyInfo() {
             <Ticket size={24} className="text-amber-500" /> Meus Vales de 50%
           </h3>
           <div className="grid gap-6">
-            {!data?.loyaltyCoupons?.length ? (
-              <div className="rounded-[32px] border border-dashed border-slate-200 p-12 text-center bg-white">
-                <AlertCircle size={36} className="mx-auto text-slate-300 mb-2" />
-                <p className="text-sm text-slate-400 font-black uppercase tracking-wider">Você ainda não possui vales</p>
-                <p className="text-xs text-slate-400 mt-1">Acumule 5 selos para ganhar seu primeiro vale de desconto!</p>
-              </div>
-            ) : (
-              data.loyaltyCoupons.map((coupon) => (
-                <div
-                  key={coupon.id}
-                  className={`group relative overflow-hidden rounded-[32px] border transition-all duration-300 hover:shadow-xl flex flex-col md:flex-row ${
-                    coupon.isUsed
-                      ? "bg-slate-50/50 border-slate-100 opacity-60"
-                      : "bg-white border-amber-200 shadow-md"
-                  }`}
-                >
-                  {/* Vale Body / Left Side */}
-                  <div className="flex-1 p-6 flex flex-col justify-between space-y-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
-                          coupon.isUsed ? "bg-slate-200 text-slate-500" : "bg-amber-100 text-amber-700"
-                        }`}>
-                          {coupon.isUsed ? "Utilizado" : "Vale de Desconto"}
-                        </span>
-                        <span className="text-xs font-bold text-slate-400">
-                          Gerado em {new Date(coupon.createdAt).toLocaleDateString("pt-BR")}
-                        </span>
-                      </div>
-                      <h4 className="text-2xl font-black text-slate-900 mt-3">Vale 50% OFF</h4>
-                      <p className="text-sm font-medium text-slate-500 mt-1 leading-normal">
-                        Válido para a sua 6ª fórmula manipulada. Apresente o QR Code ao atendente no balcão para resgatar.
-                      </p>
-                    </div>
+            {(() => {
+              const activeCoupons = data?.loyaltyCoupons?.filter((coupon) => !coupon.isUsed) || [];
+              const usedCoupons = data?.loyaltyCoupons?.filter((coupon) => coupon.isUsed) || [];
 
-                    <div className="flex items-center gap-2.5">
-                      <code className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-black tracking-wider border border-slate-200/50">
-                        {coupon.code}
-                      </code>
-                      {!coupon.isUsed && (
-                        <button
-                          onClick={() => copyToClipboard(coupon.code)}
-                          className="p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition border border-slate-200/30 cursor-pointer"
-                          title="Copiar código do vale"
-                        >
-                          <Copy size={14} />
-                        </button>
+              return (
+                <>
+                  {/* Cupons Ativos */}
+                  {activeCoupons.length === 0 ? (
+                    <div className="rounded-[32px] border border-dashed border-slate-200 p-12 text-center bg-white">
+                      <AlertCircle size={36} className="mx-auto text-slate-300 mb-2" />
+                      <p className="text-sm text-slate-400 font-black uppercase tracking-wider">Você ainda não possui vales ativos</p>
+                      <p className="text-xs text-slate-400 mt-1">Acumule 5 selos para ganhar seu primeiro vale de desconto!</p>
+                    </div>
+                  ) : activeCoupons.length === 1 ? (
+                    /* Renderiza 1 cupom inline */
+                    activeCoupons.map((coupon) => (
+                      <div
+                        key={coupon.id}
+                        className="group relative overflow-hidden rounded-[32px] border transition-all duration-300 hover:shadow-xl flex flex-col md:flex-row bg-white border-amber-200 shadow-md"
+                      >
+                        {/* Vale Body / Left Side */}
+                        <div className="flex-1 p-6 flex flex-col justify-between space-y-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
+                                Vale de Desconto
+                              </span>
+                              <span className="text-xs font-bold text-slate-400">
+                                Gerado em {new Date(coupon.createdAt).toLocaleDateString("pt-BR")}
+                              </span>
+                            </div>
+                            <h4 className="text-2xl font-black text-slate-900 mt-3">Vale 50% OFF</h4>
+                            <p className="text-sm font-medium text-slate-500 mt-1 leading-normal">
+                              Válido para a sua 6ª fórmula manipulada. Apresente o QR Code ao atendente no balcão para resgatar.
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <code className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-black tracking-wider border border-slate-200/50">
+                              {coupon.code}
+                            </code>
+                            <button
+                              onClick={() => copyToClipboard(coupon.code)}
+                              className="p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition border border-slate-200/30 cursor-pointer"
+                              title="Copiar código do vale"
+                            >
+                              <Copy size={14} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Divider Dash-line */}
+                        <div className="relative flex md:flex-col items-center justify-center py-2 md:py-0 shrink-0">
+                          <div className="hidden md:block w-px border-l-2 border-dashed border-slate-200 h-full py-4" />
+                          <div className="md:hidden w-full border-t-2 border-dashed border-slate-200 px-4" />
+                          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-50 border border-slate-200/30 hidden md:block" />
+                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-6 h-6 rounded-full bg-slate-50 border border-slate-200/30 hidden md:block" />
+                        </div>
+
+                        {/* QR Code / Right Side */}
+                        <div className="p-6 bg-slate-50/55 md:bg-white flex flex-col items-center justify-center shrink-0 border-t md:border-t-0 md:border-l border-slate-100 min-w-[180px]">
+                          <div className="flex flex-col items-center space-y-2 animate-scale-in">
+                            <div className="relative p-2 bg-white rounded-2xl border border-amber-100 shadow-sm">
+                              <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`${origin}/validar-cupom?code=${coupon.code}`)}`}
+                                alt={`QR Code ${coupon.code}`}
+                                className="h-28 w-28 object-contain"
+                              />
+                            </div>
+                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                              Apresente o QR Code
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    /* Exibe card resumo que abre o Modal de carrossel se tiver mais de 1 cupom */
+                    <div className="relative overflow-hidden rounded-[32px] border-2 border-amber-300 bg-slate-900 p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">Multi-Cupons Ativos</span>
+                        <h4 className="text-2xl font-black">Você possui {activeCoupons.length} Vales de 50% ativos!</h4>
+                        <p className="text-xs text-slate-300 font-medium">
+                          Seus vales podem ser resgatados online ou presencialmente. Clique abaixo para visualizar e escanear de forma fácil.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentCouponIndex(0);
+                          setIsVouchersModalOpen(true);
+                        }}
+                        className="rounded-2xl bg-amber-400 hover:bg-amber-500 text-slate-950 px-6 py-3.5 text-xs font-black uppercase tracking-widest transition active:scale-95 shadow-lg shadow-amber-400/20 shrink-0 text-center cursor-pointer font-sans"
+                      >
+                        Visualizar Meus Vales
+                      </button>
+                      <div className="absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
+                    </div>
+                  )}
+
+                  {/* Cupons Utilizados (Accordion) */}
+                  {usedCoupons.length > 0 && (
+                    <div className="mt-2 border border-slate-100 rounded-[32px] bg-white overflow-hidden shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setIsUsedCouponsExpanded(!isUsedCouponsExpanded)}
+                        className="w-full flex items-center justify-between p-6 hover:bg-slate-50/50 transition text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Ticket size={20} className="text-slate-400" />
+                          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                            Ver Cupons Utilizados / Histórico ({usedCoupons.length})
+                          </span>
+                        </div>
+                        <ChevronDown 
+                          size={18} 
+                          className={`text-slate-400 transition-transform duration-300 ${isUsedCouponsExpanded ? "rotate-180" : ""}`} 
+                        />
+                      </button>
+                      
+                      {isUsedCouponsExpanded && (
+                        <div className="p-6 pt-0 divide-y divide-slate-100 max-h-96 overflow-y-auto custom-scrollbar">
+                          {usedCoupons.map((coupon) => (
+                            <div
+                              key={coupon.id}
+                              className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 opacity-60"
+                            >
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
+                                    Utilizado
+                                  </span>
+                                  <span className="text-xs font-bold text-slate-400">
+                                    Gerado em {new Date(coupon.createdAt).toLocaleDateString("pt-BR")}
+                                  </span>
+                                </div>
+                                <h5 className="text-base font-black text-slate-800 mt-1.5">{coupon.code}</h5>
+                              </div>
+                              <div className="flex items-center gap-2 text-slate-400 text-xs font-bold">
+                                <span>Cupom utilizado no caixa ou checkout online</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
-                  </div>
-
-                  {/* Divider Dash-line (Responsive) */}
-                  <div className="relative flex md:flex-col items-center justify-center py-2 md:py-0 shrink-0">
-                    <div className="hidden md:block w-px border-l-2 border-dashed border-slate-200 h-full py-4" />
-                    <div className="md:hidden w-full border-t-2 border-dashed border-slate-200 px-4" />
-                    {/* Circle Cutouts */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-50 border border-slate-200/30 hidden md:block" />
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-6 h-6 rounded-full bg-slate-50 border border-slate-200/30 hidden md:block" />
-                  </div>
-
-                  {/* QR Code / Right Side */}
-                  <div className="p-6 bg-slate-50/50 md:bg-white flex flex-col items-center justify-center shrink-0 border-t md:border-t-0 md:border-l border-slate-100 min-w-[180px]">
-                    {coupon.isUsed ? (
-                      <div className="flex flex-col items-center justify-center h-28 w-28 bg-slate-100 rounded-2xl border border-slate-200/50">
-                        <AlertCircle className="text-slate-400 mb-1" size={24} />
-                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Usado</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center space-y-2 animate-scale-in">
-                        <div className="relative p-2 bg-white rounded-2xl border border-amber-100 shadow-sm">
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(coupon.code)}`}
-                            alt={`QR Code ${coupon.code}`}
-                            className="h-28 w-28 object-contain"
-                          />
-                        </div>
-                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                          Apresente o QR Code
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
+                  )}
+                </>
+              );
+            })()}
           </div>
         </section>
       </div>
@@ -478,7 +551,7 @@ export function LoyaltyInfo() {
 
               <div className="mt-4 p-2 bg-slate-50 rounded-2xl border border-slate-100">
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(generatedCoupon.code)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`${origin}/validar-cupom?code=${generatedCoupon.code}`)}`}
                   alt="QR Code Vale"
                   className="h-28 w-28 object-contain"
                 />
@@ -493,6 +566,109 @@ export function LoyaltyInfo() {
             >
               Uau, Obrigado!
             </button>
+          </div>
+        </div>
+      )}
+      {/* Modal de Carrossel de Vales Ativos */}
+      {isVouchersModalOpen && (
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-500"
+            onClick={() => setIsVouchersModalOpen(false)}
+          />
+
+          <div className="relative z-10 w-full max-w-md overflow-hidden rounded-[36px] bg-slate-900 border border-slate-800 text-white shadow-2xl animate-in zoom-in-95 duration-500 flex flex-col p-6 sm:p-8 text-center space-y-6">
+            
+            {/* Glows */}
+            <div className="absolute -top-12 -left-12 w-36 h-36 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-12 -right-12 w-36 h-36 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+
+            {(() => {
+              const activeCoupons = data?.loyaltyCoupons?.filter((coupon) => !coupon.isUsed) || [];
+              if (activeCoupons.length === 0) return <p className="text-sm text-slate-400">Nenhum cupom ativo.</p>;
+              
+              // Garante que o index esteja dentro dos limites
+              const safeIndex = currentCouponIndex >= activeCoupons.length ? 0 : currentCouponIndex;
+              const coupon = activeCoupons[safeIndex];
+
+              return (
+                <>
+                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                    <h3 className="text-lg font-black text-amber-400 uppercase tracking-wider">Meus Vales de 50%</h3>
+                    <button 
+                      type="button"
+                      onClick={() => setIsVouchersModalOpen(false)}
+                      className="p-1 text-slate-400 hover:text-white transition rounded-lg hover:bg-white/5 cursor-pointer"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Slide/Card do Cupom Atual */}
+                  <div className="relative bg-white rounded-3xl p-6 text-slate-900 shadow-lg border border-amber-200/50 flex flex-col items-center animate-scale-in">
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
+                      Vale Ativo
+                    </span>
+                    <h4 className="text-xl font-black mt-2">Desconto de 50%</h4>
+                    <p className="text-[10px] text-slate-400 font-bold mt-1">
+                      Gerado em {new Date(coupon.createdAt).toLocaleDateString("pt-BR")}
+                    </p>
+
+                    <div className="mt-4 p-2 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${origin}/validar-cupom?code=${coupon.code}`)}`}
+                        alt={`QR Code ${coupon.code}`}
+                        className="h-36 w-36 object-contain"
+                      />
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200/50">
+                      <code className="text-xs font-black tracking-wider text-slate-700">
+                        {coupon.code}
+                      </code>
+                      <button
+                        onClick={() => copyToClipboard(coupon.code)}
+                        className="p-1 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                        title="Copiar código do vale"
+                      >
+                        <Copy size={12} />
+                      </button>
+                    </div>
+                    <span className="text-[9px] font-bold text-slate-400 mt-2">Apresente este QR Code no caixa</span>
+                  </div>
+
+                  {/* Controles de Navegação */}
+                  {activeCoupons.length > 1 && (
+                    <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-1">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentCouponIndex(prev => (prev > 0 ? prev - 1 : activeCoupons.length - 1))}
+                        className="p-2.5 hover:bg-white/5 text-slate-300 hover:text-white rounded-xl transition cursor-pointer"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <span className="text-xs font-black tracking-widest text-slate-300">
+                        CUPOM {safeIndex + 1} DE {activeCoupons.length}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentCouponIndex(prev => (prev < activeCoupons.length - 1 ? prev + 1 : 0))}
+                        className="p-2.5 hover:bg-white/5 text-slate-300 hover:text-white rounded-xl transition cursor-pointer"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setIsVouchersModalOpen(false)}
+                    className="w-full rounded-2xl bg-amber-500 py-3.5 text-xs font-black uppercase tracking-widest text-white transition hover:bg-amber-600 active:scale-95 shadow-lg shadow-amber-500/20 cursor-pointer"
+                  >
+                    Fechar Vales
+                  </button>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
