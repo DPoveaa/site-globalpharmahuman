@@ -313,7 +313,7 @@ export default function AdminLoyaltyPage() {
                   <div>
                     <p className="text-xs font-black text-slate-900">Lista de Inclusão</p>
                     <p className="text-[10px] text-slate-500 font-medium mt-0.5 leading-normal">
-                      Apenas os produtos selecionados gerarão selos no pedido.
+                      O pedido ganha 1 selo se tiver pelo menos um produto selecionado.
                     </p>
                   </div>
                 </button>
@@ -333,7 +333,7 @@ export default function AdminLoyaltyPage() {
                   <div>
                     <p className="text-xs font-black text-slate-900">Lista de Exclusão</p>
                     <p className="text-[10px] text-slate-500 font-medium mt-0.5 leading-normal">
-                      Todos acumulam selo, EXCETO os produtos selecionados.
+                      O pedido ganha 1 selo se tiver pelo menos um produto não excluído.
                     </p>
                   </div>
                 </button>
@@ -343,9 +343,9 @@ export default function AdminLoyaltyPage() {
             <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100 text-xs font-medium text-slate-600 leading-relaxed space-y-1">
               <p className="font-bold text-slate-800">Resumo da Regra Ativa:</p>
               {ruleMode === "INCLUSION" ? (
-                <p>O cliente ganhará selo caso compre **pelo menos um** dos produtos marcados na lista.</p>
+                <p>O cliente ganha 1 selo por pedido que contenha pelo menos um dos produtos marcados na lista.</p>
               ) : (
-                <p>O cliente ganhará selo com qualquer produto, **a menos que** o pedido contenha apenas os produtos excluídos.</p>
+                <p>O cliente ganha 1 selo por pedido com qualquer produto, a menos que o pedido contenha apenas produtos excluídos.</p>
               )}
               {qualifyingProductIds.length === 0 && (
                 <p className="text-amber-600 font-bold mt-1">
@@ -602,7 +602,7 @@ export default function AdminLoyaltyPage() {
                   <span>📦 Gerenciar Fórmulas da Regra</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Marque as fórmulas que farão parte da lista de {ruleMode === "INCLUSION" ? "inclusão (dão selos)" : "exclusão (NÃO dão selos)"}.
+                  Marque as fórmulas que definem se o pedido é elegível para 1 selo na lista de {ruleMode === "INCLUSION" ? "inclusão" : "exclusão"}.
                 </p>
               </div>
               <button

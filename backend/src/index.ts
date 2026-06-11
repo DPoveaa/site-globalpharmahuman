@@ -12,8 +12,10 @@ import userRoutes from "./routes/user.routes";
 import reviewsRoutes from "./routes/reviews.routes";
 import shippingRoutes from "./routes/shipping.routes";
 import loyaltyRoutes from "./routes/loyalty.routes";
+import adminWhatsappRoutes from "./routes/admin-whatsapp.routes";
 import unitsRoutes from "./routes/units.routes";
 import webhookRoutes from "./routes/webhook.routes";
+import { initializeAdminWhatsapp } from "./services/admin-whatsapp.service";
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
@@ -54,6 +56,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/shipping", shippingRoutes);
 app.use("/api/loyalty", loyaltyRoutes);
+app.use("/api/admin/whatsapp", adminWhatsappRoutes);
 app.use("/api/units", unitsRoutes);
 app.use("/api/webhooks", webhookRoutes);
 
@@ -63,4 +66,5 @@ app.use((_req, res) => {
 
 app.listen(port, () => {
   console.log(`[backend] running on http://localhost:${port}`);
+  initializeAdminWhatsapp();
 });

@@ -21,6 +21,7 @@ const PERMISSION_OPTIONS = [
   { id: "manage_shipping", label: "Gerenciar Frete" },
   { id: "manage_settings", label: "Configurações Gerais" },
   { id: "manage_loyalty", label: "Gerenciar Fidelidade" },
+  { id: "manage_whatsapp", label: "Gerenciar WhatsApp Admin" },
 ];
 
 export default function AdminUsersPage() {

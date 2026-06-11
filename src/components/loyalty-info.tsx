@@ -234,7 +234,7 @@ export function LoyaltyInfo() {
             <div>
               <p className="text-xs font-black uppercase tracking-wider text-slate-300">Como funciona?</p>
               <p className="text-xs font-medium mt-1.5 leading-relaxed text-slate-200">
-                A cada fórmula manipulada, cadastre o número do pedido abaixo. Ao juntar 5 selos, você ganha automaticamente um vale de 50% de desconto na 6ª fórmula!
+                A cada pedido pago com pelo menos uma fórmula válida, cadastre o número do pedido abaixo. Cada pedido elegível vale 1 selo. Ao juntar 5 selos, você ganha automaticamente um vale de 50% de desconto na 6ª fórmula!
               </p>
             </div>
             <Link
@@ -264,7 +264,7 @@ export function LoyaltyInfo() {
                 🎉 Selos Disponíveis para Resgate!
               </h3>
               <p className="text-xs text-slate-600 mt-0.5">
-                Identificamos {eligibleOrders.length} {eligibleOrders.length === 1 ? "pedido pago" : "pedidos pagos"} em sua conta com fórmulas válidas para pontuar no programa de fidelidade.
+                Identificamos {eligibleOrders.length} {eligibleOrders.length === 1 ? "pedido pago" : "pedidos pagos"} em sua conta com pelo menos uma fórmula válida. Cada pedido elegível gera 1 selo.
               </p>
             </div>
           </div>

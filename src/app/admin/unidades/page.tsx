@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import {
   MapPin, Plus, Trash2, Edit2, Save, X,
-  Phone, Map, Image as ImageIcon, Power, PowerOff
+  Phone, Map, Image as ImageIcon, Power, PowerOff,
+  ChevronUp, ChevronDown
 } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
 
@@ -99,6 +100,44 @@ export default function AdminUnitsPage() {
       } else throw new Error();
     } catch {
       toast.error("Erro ao excluir unidade.");
+    }
+  }
+
+  async function handleMove(index: number, direction: 'up' | 'down') {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === units.length - 1) return;
+
+    const newUnits = [...units];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+
+    // Swap locally for fast UI update
+    const temp = newUnits[index];
+    newUnits[index] = newUnits[swapIndex];
+    newUnits[swapIndex] = temp;
+    
+    // Update their order values based on array position
+    newUnits.forEach((u, i) => { u.order = i; });
+    setUnits(newUnits);
+
+    const toastId = toast.loading("Reordenando...");
+    try {
+      // Save the swapped items
+      await Promise.all([
+        fetch(`/api/admin/units?id=${newUnits[index].id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order: newUnits[index].order })
+        }),
+        fetch(`/api/admin/units?id=${newUnits[swapIndex].id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order: newUnits[swapIndex].order })
+        })
+      ]);
+      toast.success("Ordem atualizada.", { id: toastId });
+    } catch {
+      toast.error("Erro ao reordenar.", { id: toastId });
+      fetchUnits(); // Revert
     }
   }
 
@@ -212,6 +251,24 @@ export default function AdminUnitsPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <div className="flex flex-col mr-2 bg-slate-50 border border-slate-100 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => handleMove(units.indexOf(unit), 'up')}
+                      disabled={units.indexOf(unit) === 0}
+                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 disabled:opacity-30 transition-all"
+                      title="Mover para cima"
+                    >
+                      <ChevronUp size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleMove(units.indexOf(unit), 'down')}
+                      disabled={units.indexOf(unit) === units.length - 1}
+                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 disabled:opacity-30 transition-all border-t border-slate-100"
+                      title="Mover para baixo"
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                  </div>
                   <button
                     onClick={() => handleToggleActive(unit)}
                     title={unit.active ? "Desativar" : "Ativar"}

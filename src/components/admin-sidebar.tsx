@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   Users,
   Settings,
+  MessageCircle,
   Truck,
   Layout,
   Star,
@@ -59,6 +60,7 @@ export function AdminSidebar({ role, permissions }: Props) {
       group: "Configurações",
       items: [
         { id: "settings", label: "Gerais", href: "/admin/configuracoes", icon: Settings, permission: "manage_settings" },
+        { id: "whatsapp", label: "WhatsApp", href: "/admin/whatsapp", icon: MessageCircle, permission: "manage_whatsapp" },
         { id: "shipping", label: "Frete", href: "/admin/frete", icon: Truck, permission: "manage_shipping" },
         { id: "menu", label: "Menu", href: "/admin/menu", icon: Layout, permission: "manage_settings" },
         { id: "units", label: "Unidades", href: "/admin/unidades", icon: MapPin, permission: "manage_settings" },

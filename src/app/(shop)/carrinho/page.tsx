@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   MapPin,
   Plus,
+  Minus,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -64,6 +65,7 @@ export default function CarrinhoPage() {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [updatingProductId, setUpdatingProductId] = useState<string>("");
   const [step, setStep] = useState<"cart" | "checkout">("cart");
 
   const [isAddingAddress, setIsAddingAddress] = useState(false);
@@ -98,6 +100,7 @@ export default function CarrinhoPage() {
   const [userCoupons, setUserCoupons] = useState<any[]>([]);
   const [couponCodeInput, setCouponCodeInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [selectedLoyaltyProductId, setSelectedLoyaltyProductId] = useState<string>("");
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
   const [checkingCoupon, setCheckingCoupon] = useState(false);
 
@@ -137,31 +140,42 @@ export default function CarrinhoPage() {
     fetchUserCoupons();
   }, [session]);
 
+  const isLoyaltyEligibleProduct = (productId: string) => {
+    if (qualifyingProductIds.length === 0) return true;
+    if (loyaltyRuleMode === "INCLUSION") {
+      return qualifyingProductIds.includes(productId);
+    }
+    return !qualifyingProductIds.includes(productId);
+  };
+
+  const loyaltyEligibleItems = cart?.items.filter(item => isLoyaltyEligibleProduct(item.product.id)) || [];
+  const selectedLoyaltyItem = loyaltyEligibleItems.find(item => item.product.id === selectedLoyaltyProductId);
+
   // Calculate loyalty discount reactively
   useEffect(() => {
-    if (cart?.items && appliedCoupon) {
-      const qualifyingItems = cart.items.filter(item => {
-        const productId = item.product.id;
-        if (qualifyingProductIds.length === 0) return true;
-        if (loyaltyRuleMode === "INCLUSION") {
-          return qualifyingProductIds.includes(productId);
-        } else {
-          return !qualifyingProductIds.includes(productId);
-        }
-      });
-
-      if (qualifyingItems.length > 0) {
-        const highestItem = qualifyingItems.reduce((max, item) => 
-          item.product.finalPrice > max.product.finalPrice ? item : max
-        , qualifyingItems[0]);
-        setLoyaltyDiscount(Math.round(highestItem.product.finalPrice * 0.5 * 100) / 100);
-      } else {
-        setLoyaltyDiscount(0);
-      }
-    } else {
+    if (!cart?.items || !appliedCoupon) {
+      setSelectedLoyaltyProductId("");
       setLoyaltyDiscount(0);
+      return;
     }
-  }, [appliedCoupon, cart, qualifyingProductIds, loyaltyRuleMode]);
+
+    const qualifyingItems = cart.items.filter(item => isLoyaltyEligibleProduct(item.product.id));
+
+    if (qualifyingItems.length === 0) {
+      setSelectedLoyaltyProductId("");
+      setLoyaltyDiscount(0);
+      return;
+    }
+
+    const selectedItem =
+      qualifyingItems.find(item => item.product.id === selectedLoyaltyProductId) ||
+      qualifyingItems.reduce((max, item) => item.product.finalPrice > max.product.finalPrice ? item : max, qualifyingItems[0]);
+
+    if (selectedItem.product.id !== selectedLoyaltyProductId) {
+      setSelectedLoyaltyProductId(selectedItem.product.id);
+    }
+    setLoyaltyDiscount(Math.round(selectedItem.product.finalPrice * 0.5 * 100) / 100);
+  }, [appliedCoupon, cart, qualifyingProductIds, loyaltyRuleMode, selectedLoyaltyProductId]);
 
   async function handleApplyCoupon(codeToApply?: string) {
     const targetCode = (codeToApply || couponCodeInput).trim().toUpperCase();
@@ -185,24 +199,22 @@ export default function CarrinhoPage() {
           return;
         }
 
-        const qualifyingItems = (cart?.items || []).filter(item => {
-          const productId = item.product.id;
-          if (qualifyingProductIds.length === 0) return true;
-          if (loyaltyRuleMode === "INCLUSION") {
-            return qualifyingProductIds.includes(productId);
-          } else {
-            return !qualifyingProductIds.includes(productId);
-          }
-        });
+        const qualifyingItems = (cart?.items || []).filter(item => isLoyaltyEligibleProduct(item.product.id));
 
         if (qualifyingItems.length === 0) {
           toast.error("Este cupom só pode ser utilizado em fórmulas participantes no seu carrinho.");
           setAppliedCoupon(null);
+          setSelectedLoyaltyProductId("");
           return;
         }
 
         setAppliedCoupon(data);
-        toast.success("Cupom aplicado com sucesso!");
+        const defaultDiscountItem = qualifyingItems.reduce((max, item) =>
+          item.product.finalPrice > max.product.finalPrice ? item : max,
+          qualifyingItems[0]
+        );
+        setSelectedLoyaltyProductId(defaultDiscountItem.product.id);
+        toast.success("Cupom aplicado ao produto elegível de maior valor. Você pode trocar se quiser.");
       }
     } catch (error) {
       toast.error("Erro de conexão ao validar cupom.");
@@ -214,6 +226,7 @@ export default function CarrinhoPage() {
 
   function handleRemoveCoupon() {
     setAppliedCoupon(null);
+    setSelectedLoyaltyProductId("");
     setCouponCodeInput("");
     toast.success("Cupom removido.");
   }
@@ -299,6 +312,32 @@ export default function CarrinhoPage() {
     await refreshCart();
   }
 
+  async function updateItemQuantity(productId: string, quantity: number) {
+    if (quantity < 1 || quantity > 99 || updatingProductId) return;
+
+    setUpdatingProductId(productId);
+    try {
+      const res = await fetch("/api/cart/items", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, quantity })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.message || "Erro ao atualizar quantidade.");
+        return;
+      }
+
+      await loadData();
+      await refreshCart();
+    } catch (error) {
+      toast.error("Erro de conexão ao atualizar quantidade.");
+    } finally {
+      setUpdatingProductId("");
+    }
+  }
+
   async function checkout() {
     if (!selectedAddressId) {
       toast.error("Por favor, selecione um endereço para entrega.");
@@ -355,6 +394,7 @@ export default function CarrinhoPage() {
           paymentMethod,
           installments,
           loyaltyCouponCode: appliedCoupon?.code || undefined,
+          loyaltyDiscountProductId: appliedCoupon ? selectedLoyaltyProductId : undefined,
           creditCard: paymentMethod === "CREDIT_CARD" ? cardInfo : undefined,
           creditCardHolderInfo: paymentMethod === "CREDIT_CARD" ? {
             ...holderInfo,
@@ -458,6 +498,7 @@ export default function CarrinhoPage() {
           paymentMethod,
           installments,
           loyaltyCouponCode: appliedCoupon?.code || undefined,
+          loyaltyDiscountProductId: appliedCoupon ? selectedLoyaltyProductId : undefined,
           creditCard: paymentMethod === "CREDIT_CARD" ? testCardInfo : undefined,
           creditCardHolderInfo: paymentMethod === "CREDIT_CARD" ? {
             ...testHolderInfo,
@@ -567,19 +608,13 @@ export default function CarrinhoPage() {
     calcShipping();
   }, [selectedAddressId, addresses]);
 
-  const hasQualifyingProduct = cart?.items?.some(item => {
-    if (qualifyingProductIds.length === 0) return true;
-    if (loyaltyRuleMode === "INCLUSION") {
-      return qualifyingProductIds.includes(item.product.id);
-    } else {
-      return !qualifyingProductIds.includes(item.product.id);
-    }
-  }) || false;
+  const hasQualifyingProduct = loyaltyEligibleItems.length > 0;
 
   // Auto-clear coupon if no qualifying products are in the cart anymore
   useEffect(() => {
     if (!loading && cart && !hasQualifyingProduct && appliedCoupon) {
       setAppliedCoupon(null);
+      setSelectedLoyaltyProductId("");
       setCouponCodeInput("");
       toast.error("O cupom foi removido pois não há produtos válidos no carrinho.");
     }
@@ -650,11 +685,36 @@ export default function CarrinhoPage() {
                 Itens no Carrinho
               </h2>
               <div className="grid gap-3">
-                {cart.items.map((item) => (
+                {cart.items.map((item) => {
+                  const isEligibleForCoupon = isLoyaltyEligibleProduct(item.product.id);
+                  const isCouponTarget = appliedCoupon && selectedLoyaltyProductId === item.product.id;
+                  const canChooseForCoupon = Boolean(appliedCoupon && isEligibleForCoupon && !isCouponTarget);
+
+                  return (
                   <article
                     key={item.id}
-                    className="group relative flex items-center gap-3 rounded-[24px] border border-brand-100 bg-white p-3 transition hover:border-brand-200 hover:shadow-md md:gap-4 md:rounded-[32px] md:p-4"
+                    className={`group relative flex flex-col gap-3 rounded-[24px] border bg-white p-3 pr-11 transition hover:shadow-md md:flex-row md:items-center md:gap-4 md:rounded-[32px] md:p-4 md:pr-12 ${
+                      isCouponTarget
+                        ? "border-amber-300 shadow-lg shadow-amber-100/70 ring-2 ring-amber-300/40"
+                        : appliedCoupon && !isEligibleForCoupon
+                          ? "border-slate-100 opacity-75"
+                          : "border-brand-100 hover:border-brand-200"
+                    }`}
                   >
+                    {isCouponTarget && (
+                      <span className="absolute -top-2 left-4 rounded-full bg-amber-400 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-slate-950 shadow-sm">
+                        50% em 1 unidade
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.product.id)}
+                      className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-xl bg-red-50 text-red-400 transition hover:bg-red-500 hover:text-white active:scale-95"
+                      title="Remover produto"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <div className="flex items-center gap-3 md:flex-1 md:gap-4">
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-brand-50 md:h-20 md:w-20">
                       <Image
                         src={getImageUrl(item.product.imageUrl)}
@@ -667,7 +727,38 @@ export default function CarrinhoPage() {
                     <div className="flex flex-1 flex-col justify-between py-0.5 md:flex-row md:items-center min-w-0">
                       <div className="flex-1 pr-2 min-w-0">
                         <h3 className="text-sm font-bold text-slate-900 line-clamp-1 md:text-base">{item.product.name}</h3>
-                        <p className="mt-0.5 text-[10px] font-bold text-slate-400 uppercase">Qtd: {item.quantity}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          {appliedCoupon && (
+                            <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                              isEligibleForCoupon ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-400"
+                            }`}>
+                              {isEligibleForCoupon ? "Elegível ao cupom" : "Não elegível"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-3 inline-flex items-center rounded-2xl border border-brand-100 bg-brand-50/40 p-1">
+                          <button
+                            type="button"
+                            onClick={() => updateItemQuantity(item.product.id, item.quantity - 1)}
+                            disabled={item.quantity <= 1 || updatingProductId === item.product.id}
+                            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Diminuir quantidade"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span className="min-w-10 px-3 text-center text-sm font-black text-slate-800">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => updateItemQuantity(item.product.id, item.quantity + 1)}
+                            disabled={item.quantity >= 99 || updatingProductId === item.product.id}
+                            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Aumentar quantidade"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
                       </div>
                       <div className="mt-3 flex items-center justify-between md:mt-0 md:gap-4">
                         <div className="flex flex-col items-start md:items-end">
@@ -683,17 +774,36 @@ export default function CarrinhoPage() {
                           )}
                           <p className="text-base font-black text-slate-600 md:text-lg">{formatCurrency(item.subtotal)}</p>
                         </div>
-                        <button
-                          onClick={() => removeItem(item.product.id)}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-400 transition hover:bg-red-500 hover:text-white md:opacity-0 md:group-hover:opacity-100"
-                          title="Remover"
-                        >
-                          <Trash2 size={16} />
-                        </button>
                       </div>
                     </div>
+                    </div>
+                    {appliedCoupon && isEligibleForCoupon && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLoyaltyProductId(item.product.id)}
+                        disabled={!canChooseForCoupon}
+                        className={`flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wider transition md:w-auto md:self-center ${
+                          isCouponTarget
+                            ? "bg-amber-400 text-slate-950 shadow-md shadow-amber-200 cursor-default"
+                            : "bg-slate-900 text-white hover:bg-slate-800 active:scale-95"
+                        } disabled:opacity-100`}
+                      >
+                        {isCouponTarget ? (
+                          <>
+                            <CheckCircle2 size={14} />
+                            Selecionado
+                          </>
+                        ) : (
+                          <>
+                            <Tags size={14} />
+                            Aplicar aqui
+                          </>
+                        )}
+                      </button>
+                    )}
                   </article>
-                ))}
+                  );
+                })}
               </div>
             </section>
           ) : (
@@ -1138,29 +1248,32 @@ export default function CarrinhoPage() {
             {/* Campo Cupom */}
             {session && (
               <div className="border-b border-brand-50 pb-4 space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Tags size={12} className="text-amber-500" />
-                  Cupom
-                </label>
-
                 {appliedCoupon ? (
-                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 px-3.5 py-2 rounded-xl">
-                    <div className="min-w-0">
-                      <p className="text-xs font-black text-emerald-800 tracking-wider">
-                        {appliedCoupon.code}
-                      </p>
-                      <p className="text-[9px] font-bold text-emerald-600 uppercase mt-0.5">
-                        Cupom Ativo
-                      </p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 px-3.5 py-2 rounded-xl">
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-emerald-800 tracking-wider">
+                          {appliedCoupon.code}
+                        </p>
+                        <p className="text-[9px] font-bold text-emerald-600 uppercase mt-0.5">
+                          Cupom Ativo
+                        </p>
+                        {selectedLoyaltyItem && (
+                          <p className="mt-0.5 max-w-[220px] truncate text-[10px] font-bold text-emerald-700">
+                            50% em {selectedLoyaltyItem.product.name}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="p-1.5 hover:bg-emerald-100 text-emerald-500 rounded-lg transition active:scale-95 cursor-pointer"
+                        title="Remover cupom"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleRemoveCoupon}
-                      className="p-1.5 hover:bg-emerald-100 text-emerald-500 rounded-lg transition active:scale-95 cursor-pointer"
-                      title="Remover cupom"
-                    >
-                      <X size={14} />
-                    </button>
+
                   </div>
                 ) : (
                   <div className="space-y-2">
