@@ -76,7 +76,7 @@ export default async function HomePage() {
       if (Array.isArray(parsed) && parsed.length > 0) {
         customBanners = parsed.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
       }
-    } catch(e) {}
+    } catch (e) { }
   }
 
   const categories = Array.isArray(categoriesJson) ? (categoriesJson as CategoryWithProducts[]) : [];
@@ -161,7 +161,7 @@ export default async function HomePage() {
               <CreditCard size={16} strokeWidth={1.5} className="md:size-6" />
             </div>
             <div className="pr-2 md:pr-0">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-900 md:text-xs">Até 10x S/ Juros</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-900 md:text-xs">Até 10x S/Juros*</p>
               <p className="text-[9px] font-medium text-slate-500 md:text-[10px]">No cartão de crédito</p>
             </div>
           </div>
@@ -170,8 +170,8 @@ export default async function HomePage() {
               <Zap size={16} strokeWidth={1.5} className="md:size-6" />
             </div>
             <div className="pr-4 md:pr-0">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-900 md:text-xs">Entrega Express</p>
-              <p className="text-[9px] font-medium text-slate-500 md:text-[10px]">Receba hoje mesmo</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-900 md:text-xs">Entrega Garantida</p>
+              <p className="text-[9px] font-medium text-slate-500 md:text-[10px]">Produtos originais</p>
             </div>
           </div>
         </div>
